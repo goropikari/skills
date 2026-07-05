@@ -59,7 +59,7 @@ def get_step_workflow_notes(step_num):
     if step_num == 0:
         return """## 🔥 要件定義フェーズの進め方 / Requirements Workflow
 - `grill-me` スキルを必ず使用し、ユーザーに一問ずつ質問して要件を詰める。
-- 各質問では Claude の推奨回答を添える。
+- 各質問では AI の推奨回答を添える。
 - コードベースを確認すれば答えられることは、ユーザーに聞かずに調査する。
 - 目的、対象ユーザー、スコープ、非スコープ、主要ユースケース、入出力、制約、受け入れ条件、未決事項を合意する。
 - 合意した内容だけを `.dev-workflow/01_requirements.md` に要件定義書としてまとめる。
@@ -72,12 +72,12 @@ def get_step_workflow_notes(step_num):
 """
     return ""
 
-def print_claude_instruction(step_num, script_path=None, continuing=False):
+def print_agent_instruction(step_num, script_path=None, continuing=False):
     step = STEPS[step_num]
     if step_num == 0:
         action = "作成・更新" if continuing else "作成"
         print(f"1. `grill-me` スキルを使用して、要件を一問ずつ深掘りしてください。")
-        print("   - 各質問には Claude の推奨回答を添えてください。")
+        print("   - 各質問には AI の推奨回答を添えてください。")
         print("   - コードベースを確認すれば答えられることは、ユーザーに聞かずに調査してください。")
         print("2. 目的、対象ユーザー、スコープ、非スコープ、主要ユースケース、入出力、制約、受け入れ条件、未決事項を合意してください。")
         print(f"3. 合意後、ターゲットファイル `{CYAN}{step['file']}{RESET}` に要件定義書を{action}してください。")
@@ -222,7 +222,7 @@ def write_status(base_dir, step_num, status):
 - [ ] 詳細なロジック/テストの実装・調整
 - [ ] 動作確認 / 自己テスト合格
 
-## ⚠️ Claude Code Constraint / 制約事項
+## ⚠️ AI Agent Constraint / 制約事項
 次へ進む指示（`/dev next` コマンドの実行）があるまで、絶対にこれ以降のステップのファイルを生成・変更してはいけない。
 Do NOT create or modify files for subsequent steps until explicitly instructed to proceed (via `/dev next`).
 """
@@ -276,8 +276,8 @@ def main():
             print(f"現在のステータス: {YELLOW}{BOLD}IN_PROGRESS{RESET}")
             print(f"\n{BOLD}📝 説明:{RESET}")
             print(STEPS[step_num]['description'])
-            print(f"\n{YELLOW}{BOLD}👉 Claudeへの指示:{RESET}")
-            print_claude_instruction(step_num, script_path=script_path, continuing=True)
+            print(f"\n{YELLOW}{BOLD}👉 AI Agent への指示:{RESET}")
+            print_agent_instruction(step_num, script_path=script_path, continuing=True)
             print(f"{YELLOW}{BOLD}========================================={RESET}")
             sys.exit(0)
             
@@ -287,7 +287,7 @@ def main():
             print(f"{CYAN}{BOLD}========================================={RESET}")
             print("現在のステップは人間のレビュー確認待ち（REVIEW_PENDING）です。")
             print(f"ターゲット: {CYAN}{STEPS[step_num]['file']}{RESET}")
-            print(f"\n{BOLD}👉 Claudeへの指示:{RESET}")
+            print(f"\n{BOLD}👉 AI Agent への指示:{RESET}")
             print("1. 人間（ユーザー）からのレビュー確認または「OK」「進めて」などの指示を待ってください。")
             print("2. 承認指示を受け取ったら、AI自身でステータスを承認済みに更新してください：")
             print(f"   - コマンド `{CYAN}python3 {script_path} approve{RESET}` を実行する")
@@ -318,8 +318,8 @@ def main():
             print(f"現在のステータス: {YELLOW}{BOLD}IN_PROGRESS{RESET}")
             print(f"\n{BOLD}📝 説明:{RESET}")
             print(STEPS[new_step]['description'])
-            print(f"\n{YELLOW}{BOLD}👉 Claudeへの指示:{RESET}")
-            print_claude_instruction(new_step, script_path=script_path)
+            print(f"\n{YELLOW}{BOLD}👉 AI Agent への指示:{RESET}")
+            print_agent_instruction(new_step, script_path=script_path)
             print(f"{RED}{BOLD}それ以外のステップのファイルは絶対に編集・作成しないでください。{RESET}")
             print(f"{CYAN}{BOLD}========================================={RESET}")
     else:
@@ -332,8 +332,8 @@ def main():
         print(f"現在のステータス: {YELLOW}{BOLD}{status}{RESET}")
         print(f"\n{BOLD}📝 説明:{RESET}")
         print(STEPS[step_num]['description'])
-        print(f"\n{YELLOW}{BOLD}👉 Claudeへの指示:{RESET}")
-        print_claude_instruction(step_num, script_path=script_path, continuing=True)
+        print(f"\n{YELLOW}{BOLD}👉 AI Agent への指示:{RESET}")
+        print_agent_instruction(step_num, script_path=script_path, continuing=True)
         print(f"\n{RED}{BOLD}⚠️ 制約事項:{RESET}")
         print(f"{RED}次へ進む指示があるまで、絶対にこれ以降のステップのファイルを生成・変更しないでください。{RESET}")
         print(f"{BLUE}{BOLD}========================================={RESET}")
