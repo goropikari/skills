@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Comment Review"
+  short_description: "Review code comments for accuracy and usefulness"
+  default_prompt: "Use $code-comment-review to review the comments and docstrings in this diff."
