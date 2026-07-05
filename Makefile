@@ -1,11 +1,11 @@
 SKILL_DIRS := $(sort $(patsubst %/SKILL.md,%,$(wildcard */SKILL.md)))
 TARGET_SKILL_ROOTS := $(HOME)/.claude/skills $(HOME)/.agents/skills
 
-.PHONY: default install link
+.PHONY: default install link copy
 
-default: link
+default: copy
 
-install: link
+install: copy
 
 link:
 	@set -eu; \
@@ -21,5 +21,19 @@ link:
 				ln -s "$$source_path" "$$link_path"; \
 				printf 'link %s -> %s\n' "$$link_path" "$$source_path"; \
 			fi; \
+		done; \
+	done
+
+copy:
+	@set -eu; \
+	repo_dir=$$(pwd); \
+	for target_root in $(TARGET_SKILL_ROOTS); do \
+		mkdir -p "$$target_root"; \
+		for skill in $(SKILL_DIRS); do \
+			copy_path="$$target_root/$$skill"; \
+			source_path="$$repo_dir/$$skill"; \
+			rm -rf "$$copy_path"; \
+			cp -R "$$source_path" "$$copy_path"; \
+			printf 'copy %s -> %s\n' "$$source_path" "$$copy_path"; \
 		done; \
 	done
