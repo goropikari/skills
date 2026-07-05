@@ -48,11 +48,13 @@ Use this structure:
 
 ```markdown
 ## TTA Review Summary
+
 Briefly summarize the main technical risks.
 
 ## Findings
 
 ### [Severity: Critical/High/Medium/Low] Title
+
 - Evidence:
 - Risk:
 - TTA perspective:
@@ -60,16 +62,21 @@ Briefly summarize the main technical risks.
 - Suggested test/analysis:
 
 ## Missing Tests / Coverage Gaps
+
 List concrete test gaps, including non-functional and white-box coverage where relevant.
 
 ## Architecture / Operability Concerns
+
 Mention performance, reliability, security, deployment, monitoring, configuration, and environment risks.
 
 ## Questions for the Author
+
 Ask only questions that affect risk assessment or test design.
 
 ## Final Recommendation
+
 Choose one:
+
 - Approve
 - Approve with comments
 - Request changes

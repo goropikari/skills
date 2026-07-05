@@ -50,11 +50,13 @@ Use this structure:
 
 ```markdown
 ## TA Review Summary
+
 Briefly summarize the main business and functional risks.
 
 ## Findings
 
 ### [Severity: Critical/High/Medium/Low] Title
+
 - Evidence:
 - Business/User risk:
 - TA perspective:
@@ -62,19 +64,25 @@ Briefly summarize the main business and functional risks.
 - Suggested test/design technique:
 
 ## Missing Scenarios / Test Gaps
+
 List concrete missing functional, workflow, edge, negative, regression, usability, or interoperability scenarios.
 
 ## Acceptance Criteria Improvements
+
 Suggest clearer or additional acceptance criteria.
 
 ## Test Data / Oracle / Environment Concerns
+
 Mention missing test data, unclear expected results, oracle problems, or environment dependencies.
 
 ## Questions for Product / Author
+
 Ask only questions needed to clarify behavior, risk, or expected results.
 
 ## Final Recommendation
+
 Choose one:
+
 - Approve
 - Approve with comments
 - Request changes

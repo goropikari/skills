@@ -22,12 +22,15 @@ This skill automates the process of running CodeRabbit code reviews multiple tim
 Ask Gemini CLI to "Run coderabbit evaluation" or "Evaluate coderabbit findings".
 
 ### Example
+
 "Evaluate coderabbit findings on the current branch."
 
 ## Resources
 
 ### scripts/
+
 - `evaluate.py`: Python script that executes the 3 runs and generates the report.
 
 ### Outputs
+
 - `coderabbit_evaluation.md`: The generated evaluation report.

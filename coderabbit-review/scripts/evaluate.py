@@ -6,6 +6,7 @@ import os
 import time
 from collections import defaultdict
 
+
 def build_command():
     """Builds the coderabbit review command, adding --config if .coderabbit.yaml exists."""
     cmd = ["coderabbit", "review", "--agent"]
@@ -15,34 +16,33 @@ def build_command():
         cmd.extend(["-c", config_path])
     return cmd
 
+
 def run_review(retry_count=2):
     """Runs coderabbit review and returns findings, with retry logic for API limits."""
     cmd = build_command()
     for attempt in range(retry_count + 1):
         try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                check=True
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
             findings = []
             hit_limit = False
 
-            for line in result.stdout.strip().split('\n'):
+            for line in result.stdout.strip().split("\n"):
                 if not line:
                     continue
                 try:
                     data = json.loads(line)
                     # Monitor status for API limits or quotas
-                    if data.get('type') == 'status':
-                        msg = data.get('message', '').lower()
-                        if 'limit' in msg or 'quota' in msg or 'rate' in msg:
-                            print(f"CodeRabbit Status: {data.get('message')}", file=sys.stderr)
-                            if data.get('status') == 'error':
+                    if data.get("type") == "status":
+                        msg = data.get("message", "").lower()
+                        if "limit" in msg or "quota" in msg or "rate" in msg:
+                            print(
+                                f"CodeRabbit Status: {data.get('message')}",
+                                file=sys.stderr,
+                            )
+                            if data.get("status") == "error":
                                 hit_limit = True
 
-                    if data.get('type') == 'finding':
+                    if data.get("type") == "finding":
                         findings.append(data)
                 except json.JSONDecodeError:
                     continue
@@ -50,7 +50,10 @@ def run_review(retry_count=2):
             if hit_limit and not findings:
                 if attempt < retry_count:
                     wait_time = (attempt + 1) * 10
-                    print(f"Hit API limit/error, retrying in {wait_time}s... (Attempt {attempt + 1}/{retry_count})", file=sys.stderr)
+                    print(
+                        f"Hit API limit/error, retrying in {wait_time}s... (Attempt {attempt + 1}/{retry_count})",
+                        file=sys.stderr,
+                    )
                     time.sleep(wait_time)
                     continue
                 else:
@@ -61,11 +64,15 @@ def run_review(retry_count=2):
         except subprocess.CalledProcessError as e:
             if attempt < retry_count:
                 wait_time = (attempt + 1) * 10
-                print(f"Process failed, retrying in {wait_time}s... (Attempt {attempt + 1}/{retry_count})", file=sys.stderr)
+                print(
+                    f"Process failed, retrying in {wait_time}s... (Attempt {attempt + 1}/{retry_count})",
+                    file=sys.stderr,
+                )
                 time.sleep(wait_time)
                 continue
             print(f"Error running coderabbit: {e.stderr}", file=sys.stderr)
             return None
+
 
 def main():
     print("Starting 3 runs of CodeRabbit review...")
@@ -76,11 +83,11 @@ def main():
             # Wait between runs to reduce likelihood of hitting rate limits
             time.sleep(5)
 
-        print(f"Run {i+1}/3...")
+        print(f"Run {i + 1}/3...")
         findings = run_review()
 
         if findings is None:
-            print(f"Aborting: Run {i+1} failed completely.")
+            print(f"Aborting: Run {i + 1} failed completely.")
             break
 
         all_runs.append(findings)
@@ -100,7 +107,7 @@ def main():
     # Summary of findings per run
     report.append("## Summary of Findings")
     for i, findings in enumerate(all_runs):
-        report.append(f"- Run {i+1}: {len(findings)} findings")
+        report.append(f"- Run {i + 1}: {len(findings)} findings")
     report.append("")
 
     # Compare findings
@@ -108,7 +115,7 @@ def main():
     finding_map = defaultdict(list)
     for i, findings in enumerate(all_runs):
         for f in findings:
-            key = (f.get('fileName'), f.get('codegenInstructions'))
+            key = (f.get("fileName"), f.get("codegenInstructions"))
             finding_map[key].append(i + 1)
 
     report.append("## Comparison Analysis")
@@ -134,7 +141,9 @@ def main():
     if not variable:
         report.append("No variable findings.")
     for file_name, instructions, runs in variable:
-        report.append(f"- **{file_name}** (Runs: {', '.join(map(str, runs))}): {instructions}")
+        report.append(
+            f"- **{file_name}** (Runs: {', '.join(map(str, runs))}): {instructions}"
+        )
     report.append("")
 
     # Output to markdown file
@@ -145,6 +154,7 @@ def main():
         print(f"Evaluation report generated: {output_file}")
     except IOError as e:
         print(f"Failed to write report: {e}", file=sys.stderr)
+
 
 if __name__ == "__main__":
     main()

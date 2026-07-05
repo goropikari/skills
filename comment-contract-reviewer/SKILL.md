@@ -164,3 +164,4 @@ For every issue found, output EXACTLY in the following format. Do not include an
 Location: <filepath>:<line_number>
 Category: [Forbidden Content type or Test Name that failed]
 Reason: [Clear explanation of why it is a violation based on the tests]
+```

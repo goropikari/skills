@@ -65,6 +65,7 @@ Write the review result to a Markdown file under `docs/reviews/`. Create the dir
 ## Findings
 
 ### [Severity: Critical/High/Medium/Low] Title
+
 - Problem:
 - Why it matters:
 - Suggested improvement:

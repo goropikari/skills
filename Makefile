@@ -1,7 +1,8 @@
 SKILL_DIRS := $(sort $(patsubst %/SKILL.md,%,$(wildcard */SKILL.md)))
 TARGET_SKILL_ROOTS := $(HOME)/.claude/skills $(HOME)/.agents/skills
+PYTHON_FILES := $(shell git ls-files '*.py')
 
-.PHONY: default install link copy
+.PHONY: default install link copy fmt
 
 default: copy
 
@@ -37,3 +38,9 @@ copy:
 			printf 'copy %s -> %s\n' "$$source_path" "$$copy_path"; \
 		done; \
 	done
+
+fmt:
+	dprint fmt
+	@if [ -n "$(PYTHON_FILES)" ]; then \
+		ruff format $(PYTHON_FILES); \
+	fi

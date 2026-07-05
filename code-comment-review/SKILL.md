@@ -50,6 +50,7 @@ Use this structure unless the user asks for a different format:
 ## Findings
 
 ### [Severity: Critical/High/Medium/Low] Title
+
 - Evidence:
 - Problem:
 - Why it matters:
