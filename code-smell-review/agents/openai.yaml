@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Smell Review"
+  short_description: "Find AI-detectable design smells"
+  default_prompt: "Use $code-smell-review to review this diff for AI-detectable code smells."

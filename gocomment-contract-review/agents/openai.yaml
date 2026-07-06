@@ -1,0 +1,6 @@
+interface:
+  display_name: "gocomment Contract Review"
+  short_description: "Review Go comments from git diffs"
+  default_prompt: "Use $gocomment-contract-review to run `gocomment diff` on the current git diff (defaulting to HEAD if no scope is given), batch the JSONL into 10-record chunks, run comment-contract-reviewer on each chunk, and write gocomment_comment_contract_review.md."
+policy:
+  allow_implicit_invocation: true
