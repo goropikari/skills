@@ -35,9 +35,11 @@ Invoke the appropriate language-specific reviewer.
 
 Examples:
 
-- golang-godoc-reviewer
+- gocomment-contract-review
 - javascript-jsdoc-reviewer
 - typescript-tsdoc-reviewer
+
+For Go, invoke `gocomment-contract-review`.
 
 Only invoke reviewers applicable to the current language.
 
@@ -71,7 +73,7 @@ Comment Contract Review
 -----------------------
 ...
 
-Go Documentation Review
+Go Comment Contract Review
 -----------------------
 ...
 ```
