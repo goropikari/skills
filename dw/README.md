@@ -1,6 +1,6 @@
-# dev-workflows (開発プロセス管理 agent skill)
+# dw (開発プロセス管理 agent skill)
 
-`dev-workflows` は、AI agent でのシステム開発において、人間のレビューを挟みながら厳格に段階的開発（6つのステップ）を進めるための開発プロセス管理 skill です。
+`dw` は、AI agent でのシステム開発において、人間のレビューを挟みながら厳格に段階的開発（6つのステップ）を進めるための開発プロセス管理 skill です。
 
 Git worktree環境に完全対応しており、状態管理や成果物がプロジェクト内の特定のディレクトリに隠蔽され、開発環境を汚さない設計になっています。
 
@@ -150,7 +150,7 @@ $dw approve
 ## 📁 ディレクトリ構造 (Directory Structure)
 
 ```text
-dev-workflows/
+dw/
 ├── README.md
 ├── SKILL.md
 └── scripts/
