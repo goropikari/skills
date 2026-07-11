@@ -1,36 +1,72 @@
 import sys
 
+DEFAULT_LINTER_SET = "standard"
+
 # Linter presets
 PRESETS = {
-    "basic": ["govet", "staticcheck"],
-    "standard": ["govet", "staticcheck", "unused", "errcheck", "ineffassign"],
-    "strict": ["govet", "staticcheck", "unused", "errcheck", "ineffassign", "revive", "goconst", "misspell", "bodyclose"],
+    "basic": {
+        "disable": ["errcheck", "ineffassign", "unused"],
+        "enable": [],
+    },
+    "standard": {
+        "disable": [],
+        "enable": [],
+    },
+    "strict": {
+        "disable": [],
+        "enable": ["bodyclose", "goconst", "misspell", "revive"],
+    },
 }
 
+EXCLUSION_PATHS = [
+    "third_party$",
+    "builtin$",
+    "examples$",
+]
+
 def write_golangci_yml(preset_name):
-    linters = PRESETS.get(preset_name, PRESETS["standard"])
+    preset = PRESETS.get(preset_name, PRESETS["standard"])
 
-    # Build the linters list for YAML
-    linters_yaml = "\n".join([f"    - {l}" for l in linters])
+    enabled_linters = preset["enable"]
+    disabled_linters = preset["disable"]
+    enable_yaml = "\n".join([f"    - {l}" for l in enabled_linters])
+    disable_yaml = "\n".join([f"    - {l}" for l in disabled_linters])
+    exclusion_paths_yaml = "\n".join([f"      - {path}" for path in EXCLUSION_PATHS])
 
-    # Basic structure for golangci-lint v2.
+    # Minimal golangci-lint v2 structure with the common exclusions used by the skill.
     content = f"""version: "2"
 
-run:
-  timeout: 5m
-
 linters:
-  default: none
-  enable:
-{linters_yaml}
-  settings:
-    govet:
-      enable:
-        - shadow
+  default: {DEFAULT_LINTER_SET}
+"""
+    if enabled_linters:
+        content += f"""  enable:
+{enable_yaml}
+"""
+    if disabled_linters:
+        content += f"""  disable:
+{disable_yaml}
+"""
+    content += f"""  settings:
     revive:
       rules:
         - name: package-comments
           disabled: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+{exclusion_paths_yaml}
+
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+{exclusion_paths_yaml}
 """
     with open(".golangci.yml", "w") as f:
         f.write(content)
