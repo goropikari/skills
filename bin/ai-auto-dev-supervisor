@@ -1236,7 +1236,7 @@ def latest_marked_comment(
         body = comment.get("body", "")
         if not isinstance(body, str) or marker not in body:
             continue
-        author_login = comment.get("author_login")
+        author_login = comment_author_login(comment)
         if github_user is not None and author_login != github_user:
             continue
         created_at = parse_iso8601(comment.get("created_at") or comment.get("createdAt"))
@@ -1281,6 +1281,23 @@ def parse_checkpoint_comment(comment: dict[str, object]) -> tuple[str | None, dt
     return pr_url, last_processed_at, last_processed_id
 
 
+def comment_author_login(comment: dict[str, object]) -> str | None:
+    author_login = comment.get("author_login")
+    if isinstance(author_login, str) and author_login:
+        return author_login
+    author = comment.get("author")
+    if isinstance(author, dict):
+        login = author.get("login")
+        if isinstance(login, str) and login:
+            return login
+    user = comment.get("user")
+    if isinstance(user, dict):
+        login = user.get("login")
+        if isinstance(login, str) and login:
+            return login
+    return None
+
+
 def latest_pr_checkpoint(
     comments: Iterable[dict[str, object]],
     *,
@@ -1294,7 +1311,7 @@ def latest_pr_checkpoint(
         body = comment.get("body", "")
         if not isinstance(body, str) or PR_CHECKPOINT_MARKER not in body:
             continue
-        author_login = comment.get("author_login")
+        author_login = comment_author_login(comment)
         if github_user is not None and author_login != github_user:
             continue
         comment_pr_url, processed_at, processed_id = parse_checkpoint_comment(comment)
@@ -1347,7 +1364,7 @@ def issue_checkpoint_comment(
         body = comment.get("body", "")
         if not isinstance(body, str) or PR_CHECKPOINT_MARKER not in body:
             continue
-        author_login = comment.get("author_login")
+        author_login = comment_author_login(comment)
         if github_user is not None and author_login != github_user:
             continue
         comment_pr_url, _, _ = parse_checkpoint_comment(comment)

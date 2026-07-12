@@ -179,10 +179,9 @@ def test_select_pr_tracking_candidate_from_issue_comments(monkeypatch, tmp_path)
         lambda repo_name, number: [
             {
                 "id": 1,
-                "author_login": "goropikari",
+                "user": {"login": "goropikari"},
                 "body": "[ai-auto-dev] pr ready: https://github.com/goropikari/gomut/pull/16",
                 "created_at": "2026-07-12T14:40:49Z",
-                "kind": "issue",
             }
         ],
     )
