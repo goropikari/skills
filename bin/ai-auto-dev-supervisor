@@ -1,0 +1,1518 @@
+#!/usr/bin/env python3
+"""Supervise `ai-auto-dev` issue work inside a Git repository."""
+
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import hashlib
+import json
+import os
+import re
+import signal
+import subprocess
+import sys
+import time
+import unicodedata
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Iterable
+
+
+LABEL_NAME = "auto-implement"
+PROCESSING_MARKER = "[ai-auto-dev] processing"
+FAILED_MARKER = "[ai-auto-dev] failed"
+CLARIFICATION_MARKER = "[ai-auto-dev] clarification-needed"
+DEFAULT_INTERVAL_SECONDS = 300
+DEFAULT_STALE_AFTER_SECONDS = 3600
+DEFAULT_MAX_RESTARTS = 3
+DEFAULT_PR_RESUME_FAILURES = 2
+STATE_DIR = Path(os.environ.get("AI_AUTO_DEV_SUPERVISOR_STATE_DIR", "/tmp"))
+
+
+@dataclass(frozen=True)
+class Issue:
+    number: int
+    title: str
+    body: str
+    url: str
+
+
+@dataclass(frozen=True)
+class PullRequest:
+    number: int
+    title: str
+    body: str
+    url: str
+    head_ref_name: str | None = None
+    author_login: str | None = None
+
+
+@dataclass(frozen=True)
+class Candidate:
+    issue: Issue
+    slug: str
+    branch_name: str
+    existing_branch: str | None
+    existing_pr_url: str | None
+    stale_processing_lock: bool
+
+    def to_json(self) -> dict[str, object]:
+        return {
+            "issue_number": self.issue.number,
+            "issue_title": self.issue.title,
+            "issue_body": self.issue.body,
+            "issue_url": self.issue.url,
+            "slug": self.slug,
+            "branch_name": self.branch_name,
+            "worktree_name": self.branch_name,
+            "existing_branch": self.existing_branch,
+            "existing_pr_url": self.existing_pr_url,
+            "stale_processing_lock": self.stale_processing_lock,
+        }
+
+
+@dataclass
+class SupervisorState:
+    active_issue_number: int | None = None
+    active_branch_name: str | None = None
+    active_slug: str | None = None
+    resume_mode: str | None = None
+    worker_pid: int | None = None
+    worker_command: list[str] | None = None
+    restarts: int = 0
+    pr_resume_failures: int = 0
+    tracking_issue_number: int | None = None
+    tracking_issue_title: str | None = None
+    tracking_issue_body: str | None = None
+    tracking_issue_url: str | None = None
+    tracking_pr_number: int | None = None
+    tracking_pr_url: str | None = None
+    tracking_branch_name: str | None = None
+    tracking_started_at: str | None = None
+    tracking_pr_comment_ids: list[int] | None = None
+    completed_issue_numbers: set[int] | None = None
+    failed_issue_numbers: set[int] | None = None
+    updated_at: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.completed_issue_numbers is None:
+            self.completed_issue_numbers = set()
+        if self.failed_issue_numbers is None:
+            self.failed_issue_numbers = set()
+        if self.tracking_pr_comment_ids is None:
+            self.tracking_pr_comment_ids = []
+
+
+def run_json_command(args: list[str], *, cwd: Path | None = None) -> object:
+    result = subprocess.run(
+        args,
+        cwd=str(cwd) if cwd else None,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return json.loads(result.stdout)
+
+
+def debug_log(enabled: bool, message: str) -> None:
+    if enabled:
+        print(f"[debug] {message}", file=sys.stderr)
+
+
+def git_repo_root() -> Path:
+    result = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return Path(result.stdout.strip())
+
+
+def repo_name_with_owner() -> str:
+    result = subprocess.run(
+        ["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
+
+
+def configured_github_user() -> str | None:
+    result = subprocess.run(
+        ["git", "config", "--get", "github.user"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    value = result.stdout.strip()
+    return value or None
+
+
+def worktree_root_for(repo_root: Path, branch_name: str) -> Path:
+    return repo_root / ".worktrees" / branch_name
+
+
+def state_file_for(repo_root: Path) -> Path:
+    digest = hashlib.sha1(str(repo_root.resolve()).encode("utf-8")).hexdigest()[:16]
+    return STATE_DIR / f"ai-auto-dev-supervisor-{digest}.json"
+
+
+def load_state(path: Path) -> SupervisorState:
+    if not path.exists():
+        return SupervisorState()
+    raw = json.loads(path.read_text())
+    tracking_comment_ids = raw.get("tracking_pr_comment_ids")
+    if not isinstance(tracking_comment_ids, list):
+        tracking_comment_ids = []
+    return SupervisorState(
+        active_issue_number=raw.get("active_issue_number"),
+        active_branch_name=raw.get("active_branch_name"),
+        active_slug=raw.get("active_slug"),
+        resume_mode=raw.get("resume_mode"),
+        worker_pid=raw.get("worker_pid"),
+        worker_command=raw.get("worker_command"),
+        restarts=raw.get("restarts", 0),
+        pr_resume_failures=raw.get("pr_resume_failures", 0),
+        tracking_issue_number=raw.get("tracking_issue_number"),
+        tracking_issue_title=raw.get("tracking_issue_title"),
+        tracking_issue_body=raw.get("tracking_issue_body"),
+        tracking_issue_url=raw.get("tracking_issue_url"),
+        tracking_pr_number=raw.get("tracking_pr_number"),
+        tracking_pr_url=raw.get("tracking_pr_url"),
+        tracking_branch_name=raw.get("tracking_branch_name"),
+        tracking_started_at=raw.get("tracking_started_at"),
+        tracking_pr_comment_ids=list(tracking_comment_ids),
+        completed_issue_numbers=set(raw.get("completed_issue_numbers", [])),
+        failed_issue_numbers=set(raw.get("failed_issue_numbers", [])),
+        updated_at=raw.get("updated_at"),
+    )
+
+
+def reset_state(path: Path) -> None:
+    if path.exists():
+        path.unlink()
+
+
+def save_state(path: Path, state: SupervisorState) -> None:
+    payload = {
+        "active_issue_number": state.active_issue_number,
+        "active_branch_name": state.active_branch_name,
+        "active_slug": state.active_slug,
+        "resume_mode": state.resume_mode,
+        "worker_pid": state.worker_pid,
+        "worker_command": state.worker_command,
+        "restarts": state.restarts,
+        "pr_resume_failures": state.pr_resume_failures,
+        "tracking_issue_number": state.tracking_issue_number,
+        "tracking_issue_title": state.tracking_issue_title,
+        "tracking_issue_body": state.tracking_issue_body,
+        "tracking_issue_url": state.tracking_issue_url,
+        "tracking_pr_number": state.tracking_pr_number,
+        "tracking_pr_url": state.tracking_pr_url,
+        "tracking_branch_name": state.tracking_branch_name,
+        "tracking_started_at": state.tracking_started_at,
+        "tracking_pr_comment_ids": sorted(state.tracking_pr_comment_ids or []),
+        "completed_issue_numbers": sorted(state.completed_issue_numbers or set()),
+        "failed_issue_numbers": sorted(state.failed_issue_numbers or set()),
+        "updated_at": utc_now().isoformat(),
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
+
+
+def utc_now() -> dt.datetime:
+    return dt.datetime.now(dt.timezone.utc)
+
+
+def parse_iso8601(value: str | None) -> dt.datetime | None:
+    if not value:
+        return None
+    try:
+        return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def list_open_issues(label_name: str) -> list[Issue]:
+    raw = run_json_command(
+        [
+            "gh",
+            "issue",
+            "list",
+            "--state",
+            "open",
+            "--label",
+            label_name,
+            "--limit",
+            "100",
+            "--json",
+            "number,title,body,url",
+        ]
+    )
+    issues = [Issue(**item) for item in raw]
+    return sorted(issues, key=lambda issue: issue.number)
+
+
+def list_open_pull_requests() -> list[PullRequest]:
+    raw = run_json_command(
+        [
+            "gh",
+            "pr",
+            "list",
+            "--state",
+            "open",
+            "--limit",
+            "100",
+            "--json",
+            "number,title,body,url,headRefName,author",
+        ]
+    )
+    prs: list[PullRequest] = []
+    for item in raw:
+        author = item.get("author")
+        author_login = None
+        if isinstance(author, dict):
+            login = author.get("login")
+            if isinstance(login, str):
+                author_login = login
+        prs.append(
+            PullRequest(
+                number=item["number"],
+                title=item["title"],
+                body=item.get("body", ""),
+                url=item["url"],
+                head_ref_name=item.get("headRefName") or item.get("head_ref_name"),
+                author_login=author_login,
+            )
+        )
+    return prs
+
+
+def load_pull_request(repo_name: str, number: int) -> dict[str, object] | None:
+    raw = run_json_command(["gh", "api", f"repos/{repo_name}/pulls/{number}"])
+    if isinstance(raw, dict):
+        return raw
+    return None
+
+
+def pull_request_author_login(pr: dict[str, object] | PullRequest | None) -> str | None:
+    if pr is None:
+        return None
+    if isinstance(pr, PullRequest):
+        return pr.author_login
+    author = pr.get("author")
+    if isinstance(author, dict):
+        login = author.get("login")
+        if isinstance(login, str):
+            return login
+    author_login = pr.get("author_login")
+    if isinstance(author_login, str):
+        return author_login
+    return None
+
+
+def pr_is_from_configured_user(pr: dict[str, object] | PullRequest, github_user: str | None) -> bool:
+    if github_user is None:
+        return True
+    return pull_request_author_login(pr) == github_user
+
+
+def push_worktree_branch(worktree_root: Path, branch_name: str) -> None:
+    subprocess.run(
+        ["git", "-C", str(worktree_root), "push", "origin", f"HEAD:{branch_name}"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def normalize_comment(comment: dict[str, object], *, kind: str) -> dict[str, object]:
+    user = comment.get("user")
+    author_login = None
+    if isinstance(user, dict):
+        login = user.get("login")
+        if isinstance(login, str):
+            author_login = login
+    body = comment.get("body", "")
+    body_text = body if isinstance(body, str) else ""
+    created_at = comment.get("created_at") or comment.get("createdAt")
+    url = comment.get("html_url") or comment.get("url")
+    return {
+        "id": comment.get("id"),
+        "author_login": author_login,
+        "body": body_text,
+        "created_at": created_at,
+        "url": url,
+        "kind": kind,
+    }
+
+
+def load_pull_request_comments(repo_name: str, number: int) -> list[dict[str, object]]:
+    issue_comments = run_json_command(
+        [
+            "gh",
+            "api",
+            f"repos/{repo_name}/issues/{number}/comments?per_page=100",
+        ]
+    )
+    review_comments = run_json_command(
+        [
+            "gh",
+            "api",
+            f"repos/{repo_name}/pulls/{number}/comments?per_page=100",
+        ]
+    )
+    comments: list[dict[str, object]] = []
+    if isinstance(issue_comments, list):
+        comments.extend(normalize_comment(comment, kind="issue") for comment in issue_comments)
+    if isinstance(review_comments, list):
+        comments.extend(normalize_comment(comment, kind="review") for comment in review_comments)
+    minimum_time = dt.datetime.min.replace(tzinfo=dt.timezone.utc)
+    comments.sort(key=lambda item: parse_iso8601(item.get("created_at")) or minimum_time)
+    return comments
+
+
+def list_local_branches(repo_root: Path) -> list[str]:
+    result = subprocess.run(
+        ["git", "for-each-ref", "refs/heads", "--format=%(refname:short)"],
+        cwd=str(repo_root),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+
+def worktree_exists(path: Path) -> bool:
+    if not path.exists():
+        return False
+    result = subprocess.run(
+        ["git", "rev-parse", "--is-inside-work-tree"],
+        cwd=str(path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result.returncode == 0 and result.stdout.strip() == "true"
+
+
+def remote_branch_exists(repo_root: Path, branch_name: str) -> bool:
+    result = subprocess.run(
+        ["git", "ls-remote", "--heads", "origin", branch_name],
+        cwd=str(repo_root),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result.returncode == 0 and bool(result.stdout.strip())
+
+
+def latest_main_ref(repo_root: Path) -> str:
+    subprocess.run(
+        ["git", "fetch", "origin", "main"],
+        cwd=str(repo_root),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    result = subprocess.run(
+        ["git", "rev-parse", "--verify", "origin/main"],
+        cwd=str(repo_root),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode == 0:
+        return "origin/main"
+
+    result = subprocess.run(
+        ["git", "rev-parse", "--verify", "main"],
+        cwd=str(repo_root),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode == 0:
+        return "main"
+
+    return "HEAD"
+
+
+def load_issue_comments(repo_name: str, number: int) -> list[dict[str, object]]:
+    raw = run_json_command(
+        [
+            "gh",
+            "api",
+            f"repos/{repo_name}/issues/{number}/comments?per_page=100",
+        ]
+    )
+    if isinstance(raw, list):
+        return raw
+    return []
+
+
+def is_processing_issue(comment_bodies: Iterable[str]) -> bool:
+    return any(PROCESSING_MARKER in body for body in comment_bodies)
+
+
+def is_failed_issue(comment_bodies: Iterable[str]) -> bool:
+    return any(FAILED_MARKER in body for body in comment_bodies)
+
+
+def derive_slug(text: str, max_words: int = 5) -> str:
+    normalized = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    words = re.findall(r"[a-z0-9]+", normalized.lower())
+    filtered = [
+        word
+        for word in words
+        if word not in {"the", "and", "or", "to", "for", "a", "an", "of", "in", "on"}
+    ]
+    if not filtered:
+        return "issue"
+    return "-".join(filtered[:max_words])
+
+
+def branch_name_for(issue_number: int, title: str, body: str) -> str:
+    source = f"{title.strip()} {body.strip()}".strip() or f"issue {issue_number}"
+    return f"issue-{issue_number}-{derive_slug(source)}"
+
+
+def find_existing_branch(branches: Iterable[str], issue_number: int) -> str | None:
+    prefix = f"issue-{issue_number}-"
+    for branch in branches:
+        if branch.startswith(prefix):
+            return branch
+    return None
+
+
+def find_existing_pr(
+    issue: Issue, prs: Iterable[PullRequest], *, github_user: str | None = None
+) -> PullRequest | None:
+    needle = f"Closes #{issue.number}"
+    fallback = f"#{issue.number}"
+    for pr in prs:
+        if not pr_is_from_configured_user(pr, github_user):
+            continue
+        body = pr.body or ""
+        title = pr.title or ""
+        if needle in body or fallback in body or fallback in title:
+            return pr
+    return None
+
+
+def pr_body_includes_close(issue_number: int, pr: PullRequest) -> bool:
+    return f"Closes #{issue_number}" in (pr.body or "")
+
+
+def verify_pull_request(repo_root: Path, issue: Issue) -> PullRequest | None:
+    github_user = configured_github_user()
+    prs = list_open_pull_requests()
+    pr = find_existing_pr(issue, prs, github_user=github_user)
+    if pr is None:
+        return None
+    if not pr_is_from_configured_user(pr, github_user):
+        return None
+    if not pr_body_includes_close(issue.number, pr):
+        return None
+    return pr
+
+
+def set_pr_resume_state(state: SupervisorState) -> None:
+    state.resume_mode = "pr"
+
+
+def clear_pr_resume_failures(state: SupervisorState) -> None:
+    state.pr_resume_failures = 0
+
+
+def clear_resume_state(state: SupervisorState) -> None:
+    state.resume_mode = None
+
+
+def ensure_issue_worktree(repo_root: Path, candidate: Candidate) -> Path:
+    worktree_root = worktree_root_for(repo_root, candidate.branch_name)
+    if worktree_exists(worktree_root):
+        return worktree_root
+
+    worktree_root.parent.mkdir(parents=True, exist_ok=True)
+    target_branch = candidate.existing_branch or candidate.branch_name
+    branch_list = list_local_branches(repo_root)
+    if target_branch in branch_list:
+        cmd = ["git", "worktree", "add", str(worktree_root), target_branch]
+    elif remote_branch_exists(repo_root, target_branch):
+        cmd = ["git", "worktree", "add", "-b", target_branch, str(worktree_root), f"origin/{target_branch}"]
+    else:
+        cmd = [
+            "git",
+            "worktree",
+            "add",
+            "-b",
+            candidate.branch_name,
+            str(worktree_root),
+            latest_main_ref(repo_root),
+        ]
+
+    subprocess.run(
+        cmd,
+        cwd=str(repo_root),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return worktree_root
+
+
+def comment_bodies(comments: Iterable[dict[str, object]]) -> list[str]:
+    bodies: list[str] = []
+    for comment in comments:
+        body = comment.get("body", "")
+        if isinstance(body, str):
+            bodies.append(body)
+    return bodies
+
+
+def processing_comment_hits(comments: Iterable[dict[str, object]]) -> list[dict[str, object]]:
+    hits: list[dict[str, object]] = []
+    for comment in comments:
+        body = comment.get("body", "")
+        if not isinstance(body, str) or PROCESSING_MARKER not in body:
+            continue
+        hits.append(
+            {
+                "id": comment.get("id"),
+                "created_at": comment.get("created_at") or comment.get("createdAt"),
+                "body": body,
+            }
+        )
+    return hits
+
+
+def latest_processing_timestamp(comments: Iterable[dict[str, object]]) -> dt.datetime | None:
+    latest: dt.datetime | None = None
+    for comment in comments:
+        body = comment.get("body", "")
+        if not isinstance(body, str) or PROCESSING_MARKER not in body:
+            continue
+        created_at = parse_iso8601(comment.get("created_at") or comment.get("createdAt"))
+        claimed_at = None
+        for line in body.splitlines():
+            if line.lower().startswith("claimed_at:"):
+                claimed_at = parse_iso8601(line.split(":", 1)[1].strip())
+                break
+        timestamp = claimed_at or created_at
+        if timestamp is not None and (latest is None or timestamp > latest):
+            latest = timestamp
+    return latest
+
+
+def processing_lock_is_stale(
+    comments: Iterable[dict[str, object]], stale_after_seconds: int
+) -> bool:
+    latest = latest_processing_timestamp(comments)
+    if latest is None:
+        return False
+    age = utc_now() - latest
+    return age.total_seconds() > stale_after_seconds
+
+
+def select_candidate(
+    repo_root: Path,
+    repo_name: str,
+    state: SupervisorState,
+    *,
+    label_name: str,
+    stale_after_seconds: int,
+    debug: bool = False,
+) -> Candidate | None:
+    github_user = configured_github_user()
+    issues = list_open_issues(label_name)
+    prs = list_open_pull_requests()
+    local_branches = list_local_branches(repo_root)
+    debug_log(debug, f"found {len(issues)} open issue(s) with label {label_name}")
+
+    active_issue_number = state.active_issue_number
+    if active_issue_number is not None:
+        debug_log(debug, f"active issue recorded in state: #{active_issue_number}")
+        if state.resume_mode:
+            debug_log(debug, f"resume mode: {state.resume_mode}")
+        for issue in issues:
+            if issue.number != active_issue_number:
+                continue
+            if issue.number in (state.failed_issue_numbers or set()):
+                debug_log(debug, f"skipping active issue #{issue.number}: marked failed in state")
+                break
+            slug = derive_slug(f"{issue.title} {issue.body}".strip() or f"issue {issue.number}")
+            branch_name = find_existing_branch(local_branches, issue.number)
+            if branch_name is None:
+                branch_name = branch_name_for(issue.number, issue.title, issue.body)
+            existing_pr = find_existing_pr(issue, prs, github_user=github_user)
+            reuse_branch = find_existing_branch(local_branches, issue.number) or (
+                existing_pr.head_ref_name if existing_pr else None
+            )
+            comments = load_issue_comments(repo_name, issue.number)
+            stale = processing_lock_is_stale(comments, stale_after_seconds)
+            if stale:
+                debug_log(debug, f"active issue #{issue.number} has stale processing lock")
+            else:
+                debug_log(debug, f"active issue #{issue.number} is still running")
+            debug_log(debug, f"selected active issue #{issue.number}")
+            return Candidate(
+                issue=issue,
+                slug=slug,
+                branch_name=branch_name,
+                existing_branch=reuse_branch,
+                existing_pr_url=existing_pr.url if existing_pr else None,
+                stale_processing_lock=stale,
+            )
+        state.active_issue_number = None
+        state.active_branch_name = None
+        state.active_slug = None
+        state.worker_pid = None
+        debug_log(debug, "active issue in state was not found in current issue list; clearing state")
+
+    for issue in issues:
+        if issue.number in (state.completed_issue_numbers or set()):
+            debug_log(debug, f"skipping issue #{issue.number}: already completed in state")
+            continue
+        if issue.number in (state.failed_issue_numbers or set()):
+            debug_log(debug, f"skipping issue #{issue.number}: already failed in state")
+            continue
+
+        comments = load_issue_comments(repo_name, issue.number)
+        hits = processing_comment_hits(comments)
+        bodies = comment_bodies(comments)
+        if is_failed_issue(bodies):
+            debug_log(debug, f"skipping issue #{issue.number}: has failed marker comment")
+            continue
+
+        if issue_body_is_sparse(issue):
+            if issue_has_pending_clarification(comments):
+                debug_log(debug, f"skipping issue #{issue.number}: waiting for clarification response")
+                continue
+            if not issue_has_clarification_response(comments):
+                debug_log(debug, f"issue #{issue.number}: body is sparse; asking for clarification")
+                issue_comment(repo_name, issue.number, make_clarification_comment(issue))
+                continue
+
+        stale_processing = processing_lock_is_stale(comments, stale_after_seconds)
+        if hits and not stale_processing:
+            debug_log(debug, f"skipping issue #{issue.number}: processing lock is fresh")
+            for hit in hits:
+                preview = " ".join(str(hit["body"]).split())
+                if len(preview) > 160:
+                    preview = preview[:160] + "..."
+                debug_log(
+                    debug,
+                    f"  matched processing comment id={hit['id']} created_at={hit['created_at']} body={preview}",
+                )
+            continue
+        if hits and stale_processing:
+            debug_log(debug, f"issue #{issue.number}: processing lock is stale and can be reclaimed")
+            for hit in hits:
+                preview = " ".join(str(hit["body"]).split())
+                if len(preview) > 160:
+                    preview = preview[:160] + "..."
+                debug_log(
+                    debug,
+                    f"  matched processing comment id={hit['id']} created_at={hit['created_at']} body={preview}",
+                )
+
+        slug = derive_slug(f"{issue.title} {issue.body}".strip() or f"issue {issue.number}")
+        branch_name = find_existing_branch(local_branches, issue.number)
+        if branch_name is None:
+            branch_name = branch_name_for(issue.number, issue.title, issue.body)
+        existing_pr = find_existing_pr(issue, prs, github_user=github_user)
+        reuse_branch = find_existing_branch(local_branches, issue.number) or (
+            existing_pr.head_ref_name if existing_pr else None
+        )
+        debug_log(debug, f"selected issue #{issue.number}")
+        return Candidate(
+            issue=issue,
+            slug=slug,
+            branch_name=branch_name,
+            existing_branch=reuse_branch,
+            existing_pr_url=existing_pr.url if existing_pr else None,
+            stale_processing_lock=stale_processing,
+        )
+
+    debug_log(debug, "no eligible issue found")
+    return None
+
+
+def issue_comment(repo_name: str, number: int, body: str) -> None:
+    subprocess.run(
+        ["gh", "issue", "comment", str(number), "--body", body],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def make_processing_comment(candidate: Candidate, worker_cmd: list[str] | None) -> str:
+    lines = [
+        PROCESSING_MARKER,
+        f"claimed_at: {utc_now().isoformat()}",
+        f"branch: {candidate.branch_name}",
+    ]
+    if candidate.existing_pr_url:
+        lines.append(f"existing_pr: {candidate.existing_pr_url}")
+    if worker_cmd:
+        lines.append(f"worker: {' '.join(worker_cmd)}")
+    return "\n".join(lines)
+
+
+def make_failed_comment(reason: str) -> str:
+    lines = [
+        FAILED_MARKER,
+        f"reported_at: {utc_now().isoformat()}",
+        f"reason: {reason}",
+    ]
+    return "\n".join(lines)
+
+
+def make_clarification_comment(issue: Issue) -> str:
+    lines = [
+        "AI からの返信:",
+        CLARIFICATION_MARKER,
+        "この issue は情報が少なく、実装方針を確定できません。issue comment で追加情報をください。",
+        "回答を受け取ったら、PRD の改善ではなく実装を続けます。",
+        "",
+        "確認したい点:",
+        "- 期待する具体的な動作",
+        "- 受け入れ条件",
+        "- 影響範囲または対象ファイル",
+        "- 既知の例外ケースや例",
+    ]
+    if issue.title.strip():
+        lines.append("")
+        lines.append(f"対象 issue: {issue.title.strip()}")
+    return "\n".join(lines)
+
+
+def issue_body_is_sparse(issue: Issue) -> bool:
+    body = issue.body.strip()
+    if not body:
+        return True
+    if len(body) < 160 and len([line for line in body.splitlines() if line.strip()]) <= 3:
+        return True
+    return False
+
+
+def latest_comment_timestamp(comments: Iterable[dict[str, object]], *, marker: str) -> dt.datetime | None:
+    latest: dt.datetime | None = None
+    for comment in comments:
+        body = comment.get("body", "")
+        if not isinstance(body, str) or marker not in body:
+            continue
+        created_at = parse_iso8601(comment.get("created_at") or comment.get("createdAt"))
+        if created_at is not None and (latest is None or created_at > latest):
+            latest = created_at
+    return latest
+
+
+def issue_has_pending_clarification(comments: Iterable[dict[str, object]]) -> bool:
+    latest_marker = latest_comment_timestamp(comments, marker=CLARIFICATION_MARKER)
+    if latest_marker is None:
+        return False
+    for comment in comments:
+        body = comment.get("body", "")
+        if not isinstance(body, str) or CLARIFICATION_MARKER in body:
+            continue
+        created_at = parse_iso8601(comment.get("created_at") or comment.get("createdAt"))
+        if created_at is not None and created_at > latest_marker:
+            return False
+    return True
+
+
+def issue_has_clarification_response(comments: Iterable[dict[str, object]]) -> bool:
+    latest_marker = latest_comment_timestamp(comments, marker=CLARIFICATION_MARKER)
+    if latest_marker is None:
+        return False
+    for comment in comments:
+        body = comment.get("body", "")
+        if not isinstance(body, str) or CLARIFICATION_MARKER in body:
+            continue
+        created_at = parse_iso8601(comment.get("created_at") or comment.get("createdAt"))
+        if created_at is not None and created_at > latest_marker:
+            return True
+    return False
+
+
+def clear_tracking_state(state: SupervisorState) -> None:
+    state.tracking_issue_number = None
+    state.tracking_issue_title = None
+    state.tracking_issue_body = None
+    state.tracking_issue_url = None
+    state.tracking_pr_number = None
+    state.tracking_pr_url = None
+    state.tracking_branch_name = None
+    state.tracking_started_at = None
+    state.tracking_pr_comment_ids = []
+
+
+def tracked_comment_id_set(state: SupervisorState) -> set[int]:
+    return {comment_id for comment_id in (state.tracking_pr_comment_ids or [])}
+
+
+def seed_tracking_comments(state: SupervisorState, comments: Iterable[dict[str, object]]) -> None:
+    comment_ids: set[int] = set()
+    for comment in comments:
+        comment_id = comment.get("id")
+        if isinstance(comment_id, int):
+            comment_ids.add(comment_id)
+    state.tracking_pr_comment_ids = sorted(comment_ids)
+
+
+def add_tracking_comment_ids(state: SupervisorState, comments: Iterable[dict[str, object]]) -> None:
+    comment_ids = tracked_comment_id_set(state)
+    for comment in comments:
+        comment_id = comment.get("id")
+        if isinstance(comment_id, int):
+            comment_ids.add(comment_id)
+    state.tracking_pr_comment_ids = sorted(comment_ids)
+
+
+def new_tracking_comments(
+    state: SupervisorState,
+    comments: Iterable[dict[str, object]],
+    *,
+    github_user: str | None = None,
+    started_at: dt.datetime | None = None,
+) -> list[dict[str, object]]:
+    seen = tracked_comment_id_set(state)
+    new_comments: list[dict[str, object]] = []
+    for comment in comments:
+        comment_id = comment.get("id")
+        if not isinstance(comment_id, int):
+            continue
+        if comment_id in seen:
+            continue
+        created_at = parse_iso8601(comment.get("created_at") or comment.get("createdAt"))
+        if started_at is not None and created_at is not None and created_at <= started_at:
+            continue
+        author_login = comment.get("author_login")
+        if github_user is not None and author_login == github_user:
+            continue
+        new_comments.append(comment)
+    return new_comments
+
+
+def format_tracking_comments(comments: Iterable[dict[str, object]]) -> str:
+    lines: list[str] = []
+    for comment in comments:
+        author = comment.get("author_login") or "unknown"
+        created_at = comment.get("created_at") or "unknown"
+        kind = comment.get("kind") or "comment"
+        body = str(comment.get("body", "")).strip()
+        lines.extend(
+            [
+                f"- [{kind}] {author} at {created_at}",
+                f"  {body}" if body else "  (empty body)",
+            ]
+        )
+    return "\n".join(lines) if lines else "- No new PR comments were supplied."
+
+
+def worker_environment(
+    repo_root: Path,
+    worktree_root: Path,
+    repo_name: str,
+    candidate: Candidate,
+    state: SupervisorState,
+) -> dict[str, str]:
+    env = os.environ.copy()
+    env.update(
+        {
+            "AI_AUTO_DEV_REPO_ROOT": str(repo_root),
+            "AI_AUTO_DEV_WORKTREE_ROOT": str(worktree_root),
+            "AI_AUTO_DEV_REPO_NAME": repo_name,
+            "AI_AUTO_DEV_ISSUE_NUMBER": str(candidate.issue.number),
+            "AI_AUTO_DEV_ISSUE_TITLE": candidate.issue.title,
+            "AI_AUTO_DEV_ISSUE_BODY": candidate.issue.body,
+            "AI_AUTO_DEV_ISSUE_URL": candidate.issue.url,
+            "AI_AUTO_DEV_BRANCH_NAME": candidate.branch_name,
+            "AI_AUTO_DEV_SLUG": candidate.slug,
+            "AI_AUTO_DEV_RESUME_MODE": state.resume_mode or "",
+            "AI_AUTO_DEV_SUPERVISOR_STATE": str(state.active_issue_number or candidate.issue.number),
+            "AI_AUTO_DEV_EXISTING_BRANCH": candidate.existing_branch or "",
+            "AI_AUTO_DEV_EXISTING_PR_URL": candidate.existing_pr_url or "",
+        }
+    )
+    return env
+
+
+def pr_comment_worker_environment(
+    repo_root: Path,
+    worktree_root: Path,
+    repo_name: str,
+    candidate: Candidate,
+    pr_number: int,
+    pr_url: str,
+    comments: Iterable[dict[str, object]],
+) -> dict[str, str]:
+    env = os.environ.copy()
+    env.update(
+        {
+            "AI_AUTO_DEV_REPO_ROOT": str(repo_root),
+            "AI_AUTO_DEV_WORKTREE_ROOT": str(worktree_root),
+            "AI_AUTO_DEV_REPO_NAME": repo_name,
+            "AI_AUTO_DEV_ISSUE_NUMBER": str(candidate.issue.number),
+            "AI_AUTO_DEV_ISSUE_TITLE": candidate.issue.title,
+            "AI_AUTO_DEV_ISSUE_BODY": candidate.issue.body,
+            "AI_AUTO_DEV_ISSUE_URL": candidate.issue.url,
+            "AI_AUTO_DEV_BRANCH_NAME": candidate.branch_name,
+            "AI_AUTO_DEV_SLUG": candidate.slug,
+            "AI_AUTO_DEV_PR_COMMENT_MODE": "1",
+            "AI_AUTO_DEV_PR_NUMBER": str(pr_number),
+            "AI_AUTO_DEV_PR_URL": pr_url,
+            "AI_AUTO_DEV_PR_NEW_COMMENTS": json.dumps(list(comments), ensure_ascii=False),
+        }
+    )
+    return env
+
+
+def is_process_running(pid: int | None) -> bool:
+    if pid is None:
+        return False
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
+def supervise_worker(
+    repo_root: Path,
+    repo_name: str,
+    candidate: Candidate,
+    state_path: Path,
+    state: SupervisorState,
+    worker_cmd: list[str],
+    *,
+    max_restarts: int,
+    retry_delay_seconds: int,
+) -> int:
+    state.active_issue_number = candidate.issue.number
+    state.active_branch_name = candidate.branch_name
+    state.active_slug = candidate.slug
+    state.worker_command = worker_cmd
+    save_state(state_path, state)
+    issue_comment(repo_name, candidate.issue.number, make_processing_comment(candidate, worker_cmd))
+    worktree_root = ensure_issue_worktree(repo_root, candidate)
+
+    def launch_worker() -> subprocess.Popen[str]:
+        env = worker_environment(repo_root, worktree_root, repo_name, candidate, state)
+        return subprocess.Popen(
+            worker_cmd,
+            cwd=str(worktree_root),
+            env=env,
+            stdin=subprocess.DEVNULL,
+            stdout=None,
+            stderr=None,
+            text=True,
+            start_new_session=True,
+        )
+
+    worker = launch_worker()
+    state.worker_pid = worker.pid
+    save_state(state_path, state)
+    print(
+        json.dumps(
+            {
+                "event": "worker-started",
+                "issue_number": candidate.issue.number,
+                "pid": worker.pid,
+                "branch_name": candidate.branch_name,
+                "worktree_root": str(worktree_root),
+            },
+            ensure_ascii=False,
+        ),
+        flush=True,
+    )
+
+    while True:
+        try:
+            return_code = worker.wait(timeout=retry_delay_seconds)
+        except subprocess.TimeoutExpired:
+            state.updated_at = utc_now().isoformat()
+            save_state(state_path, state)
+            continue
+
+        if return_code == 0:
+            pr = verify_pull_request(repo_root, candidate.issue)
+            if pr is None:
+                set_pr_resume_state(state)
+                state.pr_resume_failures += 1
+                state.worker_pid = None
+                save_state(state_path, state)
+                issue_comment(
+                    repo_name,
+                    candidate.issue.number,
+                    "[ai-auto-dev] PR not found yet; resuming in PR-only mode.",
+                )
+                print(
+                    json.dumps(
+                        {
+                            "event": "pr-missing",
+                            "issue_number": candidate.issue.number,
+                            "pr_resume_failures": state.pr_resume_failures,
+                            "worktree_root": str(worktree_root),
+                        },
+                        ensure_ascii=False,
+                    ),
+                    flush=True,
+                )
+                if state.pr_resume_failures >= DEFAULT_PR_RESUME_FAILURES:
+                    issue_comment(
+                        repo_name,
+                        candidate.issue.number,
+                        make_failed_comment("PR-only mode failed twice; giving up"),
+                    )
+                    state.failed_issue_numbers.add(candidate.issue.number)
+                    state.active_issue_number = None
+                    state.active_branch_name = None
+                    state.active_slug = None
+                    state.resume_mode = None
+                    save_state(state_path, state)
+                    return 1
+                return 0
+            push_worktree_branch(worktree_root, candidate.branch_name)
+            clear_resume_state(state)
+            clear_pr_resume_failures(state)
+            issue_comment(repo_name, candidate.issue.number, f"[ai-auto-dev] pr ready: {pr.url}")
+            current_comments = load_pull_request_comments(repo_name, pr.number)
+            state.tracking_issue_number = candidate.issue.number
+            state.tracking_issue_title = candidate.issue.title
+            state.tracking_issue_body = candidate.issue.body
+            state.tracking_issue_url = candidate.issue.url
+            state.tracking_pr_number = pr.number
+            state.tracking_pr_url = pr.url
+            state.tracking_branch_name = candidate.branch_name
+            state.tracking_started_at = utc_now().isoformat()
+            seed_tracking_comments(state, current_comments)
+            state.active_issue_number = None
+            state.active_branch_name = None
+            state.active_slug = None
+            state.resume_mode = None
+            state.worker_pid = None
+            state.restarts = 0
+            save_state(state_path, state)
+            print(
+                json.dumps(
+                    {
+                        "event": "worker-succeeded",
+                        "issue_number": candidate.issue.number,
+                    },
+                    ensure_ascii=False,
+                ),
+                flush=True,
+            )
+            return 0
+
+        state.restarts += 1
+        state.worker_pid = None
+        save_state(state_path, state)
+        print(
+            json.dumps(
+                {
+                    "event": "worker-exited",
+                    "issue_number": candidate.issue.number,
+                    "return_code": return_code,
+                    "restart": state.restarts,
+                },
+                ensure_ascii=False,
+            ),
+            flush=True,
+        )
+        if state.restarts > max_restarts:
+            if state.resume_mode == "pr":
+                state.pr_resume_failures += 1
+                save_state(state_path, state)
+                issue_comment(
+                    repo_name,
+                    candidate.issue.number,
+                    f"[ai-auto-dev] PR-only mode retry failed with exit code {return_code}.",
+                )
+                state.worker_pid = None
+                save_state(state_path, state)
+                if state.pr_resume_failures >= DEFAULT_PR_RESUME_FAILURES:
+                    issue_comment(
+                        repo_name,
+                        candidate.issue.number,
+                        make_failed_comment("PR-only mode failed twice; giving up"),
+                    )
+                    state.failed_issue_numbers.add(candidate.issue.number)
+                    state.active_issue_number = None
+                    state.active_branch_name = None
+                    state.active_slug = None
+                    state.resume_mode = None
+                    save_state(state_path, state)
+                    return return_code
+                return return_code
+            issue_comment(
+                repo_name,
+                candidate.issue.number,
+                make_failed_comment(f"worker exited with {return_code}"),
+            )
+            state.failed_issue_numbers.add(candidate.issue.number)
+            state.active_issue_number = None
+            state.active_branch_name = None
+            state.active_slug = None
+            state.resume_mode = None
+            save_state(state_path, state)
+            return return_code
+
+        time.sleep(retry_delay_seconds)
+        worker = launch_worker()
+        state.worker_pid = worker.pid
+        save_state(state_path, state)
+        print(
+            json.dumps(
+                {
+                    "event": "worker-restarted",
+                    "issue_number": candidate.issue.number,
+                    "pid": worker.pid,
+                    "restart": state.restarts,
+                    "worktree_root": str(worktree_root),
+                },
+                ensure_ascii=False,
+            ),
+            flush=True,
+        )
+
+
+def monitor_tracked_pull_request(
+    repo_root: Path,
+    repo_name: str,
+    state_path: Path,
+    state: SupervisorState,
+    worker_cmd: list[str],
+    *,
+    retry_delay_seconds: int,
+) -> int:
+    if state.tracking_pr_number is None or state.tracking_issue_number is None:
+        return 0
+
+    github_user = configured_github_user()
+    started_at = parse_iso8601(state.tracking_started_at)
+    pr = load_pull_request(repo_name, state.tracking_pr_number)
+    if pr is None:
+        clear_tracking_state(state)
+        save_state(state_path, state)
+        return 0
+    if not pr_is_from_configured_user(pr, github_user):
+        clear_tracking_state(state)
+        save_state(state_path, state)
+        return 0
+
+    pr_state = str(pr.get("state") or "").lower()
+    merged_at = pr.get("merged_at")
+    branch_name = state.tracking_branch_name or state.active_branch_name or f"issue-{state.tracking_issue_number}"
+    issue = Issue(
+        state.tracking_issue_number,
+        state.tracking_issue_title or f"Issue {state.tracking_issue_number}",
+        state.tracking_issue_body or "",
+        state.tracking_issue_url or pr.get("html_url") or state.tracking_pr_url or "",
+    )
+    candidate = Candidate(
+        issue=issue,
+        slug=state.active_slug or branch_name,
+        branch_name=branch_name,
+        existing_branch=branch_name,
+        existing_pr_url=state.tracking_pr_url,
+        stale_processing_lock=False,
+    )
+    worktree_root = worktree_root_for(repo_root, branch_name)
+    if not worktree_exists(worktree_root):
+        worktree_root = ensure_issue_worktree(repo_root, candidate)
+
+    if merged_at or pr_state == "closed":
+        issue_number = state.tracking_issue_number
+        pr_number = state.tracking_pr_number
+        if merged_at:
+            state.completed_issue_numbers.add(state.tracking_issue_number)
+        clear_tracking_state(state)
+        save_state(state_path, state)
+        print(
+            json.dumps(
+                {
+                    "event": "pr-tracking-ended",
+                    "issue_number": issue_number,
+                    "pr_number": pr_number,
+                    "merged": bool(merged_at),
+                    "state": pr_state,
+                },
+                ensure_ascii=False,
+            ),
+            flush=True,
+        )
+        return 0
+
+    comments = load_pull_request_comments(repo_name, state.tracking_pr_number)
+    pending_comments = new_tracking_comments(
+        state,
+        comments,
+        github_user=github_user,
+        started_at=started_at,
+    )
+    if not pending_comments:
+        state.updated_at = utc_now().isoformat()
+        save_state(state_path, state)
+        return 0
+
+    env = pr_comment_worker_environment(
+        repo_root,
+        worktree_root,
+        repo_name,
+        candidate,
+        state.tracking_pr_number,
+        state.tracking_pr_url or "",
+        pending_comments,
+    )
+    worker = subprocess.Popen(
+        worker_cmd,
+        cwd=str(worktree_root),
+        env=env,
+        stdin=subprocess.DEVNULL,
+        stdout=None,
+        stderr=None,
+        text=True,
+        start_new_session=True,
+    )
+    state.worker_pid = worker.pid
+    save_state(state_path, state)
+    print(
+        json.dumps(
+            {
+                "event": "pr-comment-worker-started",
+                "issue_number": state.tracking_issue_number,
+                "pr_number": state.tracking_pr_number,
+                "pid": worker.pid,
+                "new_comment_count": len(pending_comments),
+            },
+            ensure_ascii=False,
+        ),
+        flush=True,
+    )
+
+    while True:
+        try:
+            return_code = worker.wait(timeout=retry_delay_seconds)
+        except subprocess.TimeoutExpired:
+            state.updated_at = utc_now().isoformat()
+            save_state(state_path, state)
+            continue
+
+        state.worker_pid = None
+        save_state(state_path, state)
+        if return_code != 0:
+            issue_comment(
+                repo_name,
+                state.tracking_issue_number,
+                f"AI からの返信: PR comment response worker exited with {return_code}. Human judgment may be required.",
+            )
+            return return_code
+
+        push_worktree_branch(worktree_root, branch_name)
+        add_tracking_comment_ids(state, pending_comments)
+        save_state(state_path, state)
+        print(
+            json.dumps(
+                {
+                    "event": "pr-comment-worker-finished",
+                    "issue_number": state.tracking_issue_number,
+                    "pr_number": state.tracking_pr_number,
+                    "processed_comment_count": len(pending_comments),
+                },
+                ensure_ascii=False,
+            ),
+            flush=True,
+        )
+        return 0
+
+
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--label",
+        default=LABEL_NAME,
+        help=f"GitHub issue label to supervise. Default: {LABEL_NAME}.",
+    )
+    parser.add_argument(
+        "--interval",
+        type=int,
+        default=DEFAULT_INTERVAL_SECONDS,
+        help="Polling interval in seconds. Default: 300.",
+    )
+    parser.add_argument(
+        "--stale-after",
+        type=int,
+        default=DEFAULT_STALE_AFTER_SECONDS,
+        help="Treat a processing lock as stale after this many seconds. Default: 3600.",
+    )
+    parser.add_argument(
+        "--max-restarts",
+        type=int,
+        default=DEFAULT_MAX_RESTARTS,
+        help="Restart a failed worker at most this many times before marking the issue failed.",
+    )
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="Select one candidate, print it as JSON, and exit.",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Print skip reasons and selection diagnostics to stderr.",
+    )
+    parser.add_argument(
+        "--reset-state",
+        action="store_true",
+        help="Forget cached state for this repository before selecting an issue.",
+    )
+    parser.add_argument(
+        "--worker-cmd",
+        nargs=argparse.REMAINDER,
+        help="Worker command to supervise. Required for continuous mode.",
+    )
+    return parser.parse_args(argv)
+
+
+def format_help() -> str:
+    lines = [
+        "ai-auto-dev-supervisor commands:",
+        f"  label        GitHub issue label to supervise. Default: {LABEL_NAME}.",
+        f"  interval     Polling interval in seconds. Default: {DEFAULT_INTERVAL_SECONDS}.",
+        f"  stale-after  Reclaim processing locks older than this many seconds. Default: {DEFAULT_STALE_AFTER_SECONDS}.",
+        f"  max-restarts Restart a failed worker up to this many times. Default: {DEFAULT_MAX_RESTARTS}.",
+        "  once         Print the next candidate as JSON and exit.",
+        "  worker-cmd   Worker command to supervise.",
+        "",
+        "Examples:",
+        "  ai-auto-dev-supervisor --once",
+        "  ai-auto-dev-supervisor --worker-cmd codex --run --model gpt-5",
+        "  ai-auto-dev-supervisor --interval 120 --stale-after 1800 --worker-cmd python3 dev_worker.py",
+    ]
+    return "\n".join(lines)
+
+
+def print_help() -> None:
+    print(format_help())
+
+
+def print_candidate(candidate: Candidate) -> None:
+    json.dump(candidate.to_json(), sys.stdout, ensure_ascii=False, indent=2)
+    sys.stdout.write("\n")
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(sys.argv[1:] if argv is None else argv)
+    repo_root = git_repo_root()
+    repo_name = repo_name_with_owner()
+    state_path = state_file_for(repo_root)
+    if args.reset_state:
+        reset_state(state_path)
+    state = load_state(state_path)
+
+    if args.once:
+        candidate = select_candidate(
+            repo_root,
+            repo_name,
+            state,
+            label_name=args.label,
+            stale_after_seconds=args.stale_after,
+            debug=args.debug,
+        )
+        if candidate is None:
+            debug_log(args.debug, "once mode found no candidate")
+            return 1
+        print_candidate(candidate)
+        return 0
+
+    if not args.worker_cmd:
+        print("continuous mode requires --worker-cmd", file=sys.stderr)
+        return 2
+
+    shutdown_requested = False
+
+    def handle_signal(signum: int, _frame: object) -> None:
+        nonlocal shutdown_requested
+        shutdown_requested = True
+        print(f"received signal {signum}; stopping", file=sys.stderr)
+
+    signal.signal(signal.SIGINT, handle_signal)
+    signal.signal(signal.SIGTERM, handle_signal)
+
+    while not shutdown_requested:
+        state = load_state(state_path)
+        if state.tracking_pr_number is not None and state.tracking_issue_number is not None:
+            monitor_tracked_pull_request(
+                repo_root,
+                repo_name,
+                state_path,
+                state,
+                args.worker_cmd,
+                retry_delay_seconds=max(1, min(args.interval, 30)),
+            )
+            time.sleep(args.interval)
+            continue
+        if state.active_issue_number is not None and is_process_running(state.worker_pid):
+            print(
+                json.dumps(
+                    {
+                        "event": "resuming-worker",
+                        "issue_number": state.active_issue_number,
+                        "pid": state.worker_pid,
+                    },
+                    ensure_ascii=False,
+                ),
+                flush=True,
+            )
+            while is_process_running(state.worker_pid) and not shutdown_requested:
+                state.updated_at = utc_now().isoformat()
+                save_state(state_path, state)
+                time.sleep(max(1, min(args.interval, 30)))
+            continue
+
+        candidate = select_candidate(
+            repo_root,
+            repo_name,
+            state,
+            label_name=args.label,
+            stale_after_seconds=args.stale_after,
+            debug=args.debug,
+        )
+        if candidate is None:
+            print(
+                json.dumps(
+                    {"event": "idle", "sleep_seconds": args.interval},
+                    ensure_ascii=False,
+                ),
+                flush=True,
+            )
+            time.sleep(args.interval)
+            continue
+
+        supervise_worker(
+            repo_root,
+            repo_name,
+            candidate,
+            state_path,
+            state,
+            args.worker_cmd,
+            max_restarts=args.max_restarts,
+            retry_delay_seconds=max(1, min(args.interval, 30)),
+        )
+        continue
+
+    return 130
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

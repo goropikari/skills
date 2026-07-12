@@ -211,7 +211,10 @@ def test_split_yes_enters_subphase_and_completes_parent_depth_first(
     assert "- **Local Stage**: definition" in content
 
     phase_design_content = phase_design.read_text(encoding="utf-8")
-    assert "## Phase 1: Search\n- **Phase Type**: feature\n- **Status**: COMPLETED" in phase_design_content
+    assert (
+        "## Phase 1: Search\n- **Phase Type**: feature\n- **Status**: COMPLETED"
+        in phase_design_content
+    )
     split_design_content = split_design.read_text(encoding="utf-8")
     assert "- **Status**: COMPLETED" in split_design_content
 

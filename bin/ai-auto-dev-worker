@@ -1,0 +1,297 @@
+#!/usr/bin/env python3
+"""Run Codex against the issue selected by `ai-auto-dev-supervisor`."""
+
+from __future__ import annotations
+
+import os
+import json
+import shlex
+import subprocess
+import sys
+from pathlib import Path
+
+
+DEFAULT_CODEX_BIN = "codex"
+REQUIRED_REVIEW_SUITE = (
+    "ta-review",
+    "tta-review",
+    "jr",
+    "comment-review-orchestrator",
+)
+PR_COMMENT_MODE = "pr-comments"
+
+
+def env(name: str, default: str = "") -> str:
+    value = os.environ.get(name, default)
+    return value.strip()
+
+
+def require(name: str) -> str:
+    value = env(name)
+    if not value:
+        print(f"missing required environment variable: {name}", file=sys.stderr)
+        raise SystemExit(2)
+    return value
+
+
+def review_suite_lines() -> list[str]:
+    return [
+        "Required review suite at every completed phase:",
+        *[f"- `{review}`" for review in REQUIRED_REVIEW_SUITE],
+        "- Run the suite from the current worktree only after the current phase or subphase is fully complete.",
+        "- Do not treat a phase as complete until the review suite has been run for that phase or subphase.",
+    ]
+
+
+def parse_json_list_env(name: str) -> list[dict[str, object]]:
+    raw = env(name)
+    if not raw:
+        return []
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    if isinstance(value, list):
+        return [item for item in value if isinstance(item, dict)]
+    return []
+
+
+def format_pr_comment_context(comments: list[dict[str, object]]) -> str:
+    if not comments:
+        return "- No new PR comments were supplied."
+
+    lines = []
+    for comment in comments:
+        author = comment.get("author_login") or "unknown"
+        created_at = comment.get("created_at") or "unknown"
+        kind = comment.get("kind") or "comment"
+        body = str(comment.get("body", "")).strip()
+        lines.extend(
+            [
+                f"- [{kind}] {author} at {created_at}",
+                f"  {body}" if body else "  (empty body)",
+            ]
+        )
+    return "\n".join(lines)
+
+
+def normalize_pr_comment_body(body: str) -> str:
+    text = body.strip()
+    if not text:
+        return "AI からの返信: コメント応答を生成できませんでした。人間の判断が必要です。"
+    if text.startswith("AI からの返信:"):
+        return text
+    return f"AI からの返信:\n{text}"
+
+
+def post_pr_comment(pr_number: str, body: str) -> None:
+    subprocess.run(
+        ["gh", "pr", "comment", pr_number, "--body", body],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def build_pr_comment_prompt() -> str:
+    issue_number = require("AI_AUTO_DEV_ISSUE_NUMBER")
+    issue_title = require("AI_AUTO_DEV_ISSUE_TITLE")
+    issue_body = env("AI_AUTO_DEV_ISSUE_BODY")
+    issue_url = require("AI_AUTO_DEV_ISSUE_URL")
+    repo_name = require("AI_AUTO_DEV_REPO_NAME")
+    repo_root = require("AI_AUTO_DEV_REPO_ROOT")
+    worktree_root = env("AI_AUTO_DEV_WORKTREE_ROOT", repo_root) or repo_root
+    branch_name = require("AI_AUTO_DEV_BRANCH_NAME")
+    slug = require("AI_AUTO_DEV_SLUG")
+    pr_number = require("AI_AUTO_DEV_PR_NUMBER")
+    pr_url = require("AI_AUTO_DEV_PR_URL")
+    new_comments = parse_json_list_env("AI_AUTO_DEV_PR_NEW_COMMENTS")
+
+    lines = [
+        "You are the PR comment response worker for ai-auto-dev.",
+        "",
+        "Mission:",
+        "- Monitor the linked pull request and respond to new comments.",
+        "- Keep the PR moving toward merge without ignoring reviewer feedback.",
+        "",
+        "Response rules:",
+        "- Always make it clear that your reply is from AI by prefixing comments with `AI からの返信:`.",
+        "- If the right action requires human judgment, say so explicitly in a PR comment and explain what decision is needed.",
+        "- Do not guess when the comment asks for a product or design decision.",
+        "- If the comment can be handled by code or documentation changes, make the change in the worktree and reply with a concise summary.",
+        "- Address only the PR and issue listed below.",
+        "",
+        "PR context:",
+        f"Repository: {repo_name}",
+        f"Repository root: {repo_root}",
+        f"Worktree root: {worktree_root}",
+        f"Issue number: {issue_number}",
+        f"Issue title: {issue_title}",
+        f"Issue URL: {issue_url}",
+        f"Branch name: {branch_name}",
+        f"Slug: {slug}",
+        f"PR number: {pr_number}",
+        f"PR URL: {pr_url}",
+        "",
+        "New PR comments:",
+        format_pr_comment_context(new_comments),
+        "",
+        "Failure handling:",
+        "- If the repository state is inconsistent, explain the inconsistency instead of guessing.",
+        "- If you hit a blocker that needs human input, summarize the blocker and stop cleanly.",
+    ]
+    if issue_body:
+        lines.extend(["", "Issue body:", issue_body])
+    return "\n".join(lines)
+
+
+def build_prompt() -> str:
+    if env("AI_AUTO_DEV_PR_COMMENT_MODE") == "1":
+        return build_pr_comment_prompt()
+
+    issue_number = require("AI_AUTO_DEV_ISSUE_NUMBER")
+    issue_title = require("AI_AUTO_DEV_ISSUE_TITLE")
+    issue_body = env("AI_AUTO_DEV_ISSUE_BODY")
+    issue_url = require("AI_AUTO_DEV_ISSUE_URL")
+    repo_name = require("AI_AUTO_DEV_REPO_NAME")
+    repo_root = require("AI_AUTO_DEV_REPO_ROOT")
+    worktree_root = env("AI_AUTO_DEV_WORKTREE_ROOT", repo_root) or repo_root
+    branch_name = require("AI_AUTO_DEV_BRANCH_NAME")
+    slug = require("AI_AUTO_DEV_SLUG")
+    resume_mode = env("AI_AUTO_DEV_RESUME_MODE")
+    existing_branch = env("AI_AUTO_DEV_EXISTING_BRANCH")
+    existing_pr_url = env("AI_AUTO_DEV_EXISTING_PR_URL")
+
+    lines = [
+        "You are the implementation worker for ai-auto-dev.",
+        "",
+        "Mission:",
+        "- Complete exactly one GitHub issue in the current repository.",
+        "- Use the repo's existing `dw-phase` workflow for implementation work.",
+        "- Prefer small, reviewable commits at every completed phase.",
+        "- If the issue body already contains a PRD or spec, treat it as implementation input and move to code changes instead of spending the run rewriting the PRD.",
+        "- Only refine the PRD when a missing decision blocks implementation, and keep that refinement minimal.",
+        "",
+        "Execution rules:",
+        "- Treat the worktree as the working directory.",
+        "- Reuse the existing branch/worktree if present.",
+        "- Do not touch any issue other than the one provided below.",
+        "- Keep the issue comment trail updated at phase boundaries.",
+        "- Open or update exactly one PR for this issue yourself before you finish.",
+        "- Include `Closes #<issue-number>` in the PR body.",
+        "- Do not report success until the PR exists.",
+        "- If the issue cannot be completed, stop and report the blocker clearly.",
+        "",
+        "Workflow contract:",
+        "- First inspect the repository and issue context.",
+        "- Then run `dw-phase` and follow the current `CURRENT_STEP.md` exactly.",
+        "- Do not run the review suite after intermediate steps inside a phase or subphase.",
+        "- Run the review suite only when the current phase or subphase is fully complete.",
+        "- Do not advance to the next step until the current step is complete.",
+        "- Commit after every completed phase.",
+        "- Leave a phase-complete issue comment that includes the phase name and commit hash when available.",
+        "",
+        *review_suite_lines(),
+    ]
+    if resume_mode == "pr":
+        lines.extend(
+            [
+                "",
+                "Resume mode:",
+                "- Implementation is already done.",
+                "- Only create or repair the PR for this issue.",
+                "- Do not change code unless absolutely necessary to make the PR valid.",
+                "- Use the existing dw-phase state in the worktree to confirm the implementation is already complete.",
+            ]
+        )
+    lines.extend(
+        [
+            "",
+            "Issue context:",
+            f"Repository: {repo_name}",
+            f"Repository root: {repo_root}",
+            f"Worktree root: {worktree_root}",
+            f"Issue number: {issue_number}",
+            f"Issue title: {issue_title}",
+            f"Issue URL: {issue_url}",
+            f"Branch name: {branch_name}",
+            f"Slug: {slug}",
+        ]
+    )
+    if issue_body:
+        lines.extend(["Issue body:", issue_body])
+    if existing_branch:
+        lines.append(f"Existing branch: {existing_branch}")
+    if existing_pr_url:
+        lines.append(f"Existing PR: {existing_pr_url}")
+    lines.extend(
+        [
+            "",
+        "Failure handling:",
+        "- If the repository state is inconsistent, explain the inconsistency instead of guessing.",
+        "- If you hit a blocker that needs human input, summarize the blocker and stop cleanly.",
+        "- Do not stop at PRD improvement when code changes are still required.",
+    ]
+    )
+    return "\n".join(lines)
+
+
+def codex_binary() -> str:
+    return env("AI_AUTO_DEV_CODEX_BIN", DEFAULT_CODEX_BIN)
+
+
+def build_command() -> list[str]:
+    worktree_root = env("AI_AUTO_DEV_WORKTREE_ROOT", require("AI_AUTO_DEV_REPO_ROOT")) or require(
+        "AI_AUTO_DEV_REPO_ROOT"
+    )
+    command = [
+        codex_binary(),
+        "exec",
+        "--cd",
+        worktree_root,
+        "--ephemeral",
+        "--color",
+        env("AI_AUTO_DEV_CODEX_COLOR", "auto") or "auto",
+    ]
+
+    if env("AI_AUTO_DEV_BYPASS_APPROVALS", "0") == "1":
+        command.append("--dangerously-bypass-approvals-and-sandbox")
+
+    extra = env("AI_AUTO_DEV_CODEX_ARGS")
+    if extra:
+        command.extend(shlex.split(extra))
+
+    command.append("-")
+    return command
+
+
+def main() -> int:
+    repo_root = Path(require("AI_AUTO_DEV_REPO_ROOT"))
+    worktree_root = Path(env("AI_AUTO_DEV_WORKTREE_ROOT", str(repo_root)) or str(repo_root))
+    if not worktree_root.exists():
+        print(f"worktree root does not exist: {worktree_root}", file=sys.stderr)
+        return 2
+
+    cmd = build_command()
+    prompt = build_prompt()
+    print(f"running: {' '.join(shlex.quote(part) for part in cmd)}", file=sys.stderr)
+    pr_comment_mode = env("AI_AUTO_DEV_PR_COMMENT_MODE") == "1"
+    completed = subprocess.run(
+        cmd,
+        cwd=str(worktree_root),
+        input=prompt,
+        text=True,
+        check=False,
+        capture_output=pr_comment_mode,
+    )
+    if completed.returncode != 0:
+        return completed.returncode
+    if pr_comment_mode:
+        pr_number = require("AI_AUTO_DEV_PR_NUMBER")
+        body = normalize_pr_comment_body(completed.stdout or "")
+        post_pr_comment(pr_number, body)
+    return completed.returncode
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

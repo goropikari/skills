@@ -1,0 +1,4 @@
+interface:
+  display_name: "Grill PRD"
+  short_description: "Interview and draft PRDs from rough ideas"
+  default_prompt: "Use grill-me style questioning to interview the user one question at a time, gather product requirements, and produce a concise PRD in Markdown when enough context is available."

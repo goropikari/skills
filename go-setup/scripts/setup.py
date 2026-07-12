@@ -24,6 +24,7 @@ EXCLUSION_PATHS = [
     "examples$",
 ]
 
+
 def write_golangci_yml(preset_name):
     preset = PRESETS.get(preset_name, PRESETS["standard"])
 
@@ -72,6 +73,7 @@ formatters:
         f.write(content)
     print("Created .golangci.yml")
 
+
 def write_makefile():
     content = r""".PHONY: fmt lint
 
@@ -87,19 +89,25 @@ lint:
         f.write(content)
     print("Created Makefile")
 
+
 def main():
     preset = "standard"
     if len(sys.argv) > 1:
         preset = sys.argv[1].lower()
 
     if preset not in PRESETS:
-        print(f"Error: Invalid preset '{preset}'. Available: {', '.join(PRESETS.keys())}")
+        print(
+            f"Error: Invalid preset '{preset}'. Available: {', '.join(PRESETS.keys())}"
+        )
         sys.exit(1)
 
     print(f"Setting up Go project with '{preset}' preset...")
     write_golangci_yml(preset)
     write_makefile()
-    print("\nSetup complete! Run 'make fmt' to modernize your project and 'make lint' to check it.")
+    print(
+        "\nSetup complete! Run 'make fmt' to modernize your project and 'make lint' to check it."
+    )
+
 
 if __name__ == "__main__":
     main()

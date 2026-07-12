@@ -315,7 +315,10 @@ def parse_children_from_text(text: str, parent_path: str) -> list[ChildPhase] | 
         rf"^##\s+{label}\s+(\d+):\s*(.*?)\s*$([\s\S]*?)(?=^##\s+{label}\s+\d+:|\Z)",
         re.MULTILINE,
     )
-    sections = {int(m.group(1)): (m.group(2).strip(), m.group(3)) for m in pattern.finditer(text)}
+    sections = {
+        int(m.group(1)): (m.group(2).strip(), m.group(3))
+        for m in pattern.finditer(text)
+    }
     children: list[ChildPhase] = []
     for number in range(1, count + 1):
         if number not in sections:
@@ -420,7 +423,9 @@ def complete_node_and_find_next(base_dir: Path, path: str) -> WorkflowState | No
     current = path
     while current:
         parent = parent_path_of(current)
-        update_child_status(base_dir, parent, child_number_from_path(current), "COMPLETED")
+        update_child_status(
+            base_dir, parent, child_number_from_path(current), "COMPLETED"
+        )
         sibling = next_uncompleted_child(base_dir, parent)
         if sibling is not None:
             update_child_status(base_dir, parent, sibling.number, "IN_PROGRESS")
@@ -447,7 +452,9 @@ def invalid(message: str, state: WorkflowState, base_dir: Path) -> int:
     print_header(RED, "DW-PHASE: INVALID WORKFLOW METADATA")
     print(message)
     print("対象成果物を修正し、レビューと承認をやり直してください。")
-    print(f"通常手順: `{DW_REVIEW_COMMAND}` -> `{DW_APPROVE_COMMAND}` -> `{DW_NEXT_COMMAND}`")
+    print(
+        f"通常手順: `{DW_REVIEW_COMMAND}` -> `{DW_APPROVE_COMMAND}` -> `{DW_NEXT_COMMAND}`"
+    )
     print(f"{RED}{BOLD}========================================={RESET}")
     return 1
 
@@ -598,22 +605,36 @@ def print_header(color: str, title: str) -> None:
     print(f"{color}{BOLD}========================================={RESET}")
 
 
-def print_agent_instruction(state: WorkflowState, script_path: Path, continuing: bool = False) -> None:
+def print_agent_instruction(
+    state: WorkflowState, script_path: Path, continuing: bool = False
+) -> None:
     step = current_step_info(state)
     action = "作成・更新" if continuing else "作成"
     print(f"1. ターゲット `{CYAN}{step.target}{RESET}` を{action}してください。")
-    print("2. 現在のステップの範囲だけを扱い、後続ステップのファイルは作成・変更しないでください。")
+    print(
+        "2. 現在のステップの範囲だけを扱い、後続ステップのファイルは作成・変更しないでください。"
+    )
     print(f"3. `{STATE_DIR}/{STATE_FILE}` の進捗サマリを随時更新してください。")
-    print("4. ステップの作業が完了したら、成果物のパスと内容または要約をユーザーに出力してください。")
-    print(f"5. 成果物の出力後、AI自身で `{CYAN}python3 {script_path} review{RESET}` を実行してください。")
+    print(
+        "4. ステップの作業が完了したら、成果物のパスと内容または要約をユーザーに出力してください。"
+    )
+    print(
+        f"5. 成果物の出力後、AI自身で `{CYAN}python3 {script_path} review{RESET}` を実行してください。"
+    )
     if state.global_step == 1:
-        print(f"6. フェーズ設計書には `- **Phases**: N` と各 Phase の `- **Phase Type**: feature|layer` を記載してください。")
+        print(
+            f"6. フェーズ設計書には `- **Phases**: N` と各 Phase の `- **Phase Type**: feature|layer` を記載してください。"
+        )
     if state.local_stage == "definition":
-        print("6. 定義ファイルには `- **Phase Type**: feature|layer` を記載してください。")
+        print(
+            "6. 定義ファイルには `- **Phase Type**: feature|layer` を記載してください。"
+        )
     if state.local_stage == "test-design":
         print("6. テスト設計には `- **Split**: yes|no` を記載してください。")
     if state.local_stage == "split-design":
-        print("6. 分割設計には `- **Subphases**: N` と各 Subphase の `- **Phase Type**: feature|layer` を記載してください。")
+        print(
+            "6. 分割設計には `- **Subphases**: N` と各 Subphase の `- **Phase Type**: feature|layer` を記載してください。"
+        )
 
 
 def print_current(state: WorkflowState, script_path: Path) -> None:
@@ -635,7 +656,9 @@ def print_current(state: WorkflowState, script_path: Path) -> None:
     print(f"\n{YELLOW}{BOLD}AI Agent への指示:{RESET}")
     print_agent_instruction(state, script_path, continuing=True)
     print(f"\n{RED}{BOLD}制約事項:{RESET}")
-    print("次へ進む指示があるまで、絶対にこれ以降のステップのファイルを生成・変更しないでください。")
+    print(
+        "次へ進む指示があるまで、絶対にこれ以降のステップのファイルを生成・変更しないでください。"
+    )
     print(f"{BLUE}{BOLD}========================================={RESET}")
 
 
@@ -672,7 +695,9 @@ def main() -> int:
         print_header(CYAN, "DW-PHASE STATUS UPDATED TO REVIEW_PENDING")
         print(f"現在のステップ: {BOLD}{current_step_info(new_state).name}{RESET}")
         print("ステータスを REVIEW_PENDING に更新しました。")
-        print(f"承認が得られたら、AI自身で {GREEN}{DW_APPROVE_COMMAND}{RESET} を実行してください。")
+        print(
+            f"承認が得られたら、AI自身で {GREEN}{DW_APPROVE_COMMAND}{RESET} を実行してください。"
+        )
         print(f"{CYAN}{BOLD}========================================={RESET}")
         return 0
 
@@ -682,7 +707,9 @@ def main() -> int:
         print_header(GREEN, "DW-PHASE STATUS UPDATED TO REVIEWED")
         print(f"現在のステップ: {BOLD}{current_step_info(new_state).name}{RESET}")
         print("ステータスを REVIEWED に更新しました。")
-        print(f"次のステップに進むには、{CYAN}{BOLD}{DW_NEXT_COMMAND}{RESET} を実行してください。")
+        print(
+            f"次のステップに進むには、{CYAN}{BOLD}{DW_NEXT_COMMAND}{RESET} を実行してください。"
+        )
         print(f"{GREEN}{BOLD}========================================={RESET}")
         return 0
 
@@ -702,8 +729,12 @@ def main() -> int:
     if state.status == "REVIEW_PENDING":
         print_header(CYAN, "DW-PHASE: REVIEW PENDING")
         print("現在のステップは人間のレビュー確認待ちです。")
-        print("承認指示を受け取ったら、AI自身で approve を実行してから next を再実行してください。")
-        print(f"直接実行: `python3 {script_path} approve` -> `python3 {script_path} next`")
+        print(
+            "承認指示を受け取ったら、AI自身で approve を実行してから next を再実行してください。"
+        )
+        print(
+            f"直接実行: `python3 {script_path} approve` -> `python3 {script_path} next`"
+        )
         print(f"{CYAN}{BOLD}========================================={RESET}")
         return 0
 
