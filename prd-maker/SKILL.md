@@ -25,9 +25,7 @@ Use this skill to interview the user until the product intent is clear enough to
    - Skip questions that can be inferred from context.
    - Stop asking once the remaining gaps are minor assumptions that can be stated explicitly.
 5. Draft the PRD when ready.
-   - Use the bundled PRD outline as the default structure.
-   - If `references/prd-template.md` is available, follow it.
-   - If the template file is not available in context, use the fallback outline in this skill body.
+   - Use the bundled PRD outline below as the default structure.
    - Write a complete Markdown PRD with assumptions, scope, and open questions called out clearly.
    - If the user wants a revision, update the PRD instead of restarting the interview.
 
@@ -56,9 +54,9 @@ Use this order unless the user already answered a later question:
 - If the user asks for a PRD from an existing product or codebase, anchor the PRD to the current behavior before proposing new behavior.
 - When the request is ambiguous, state the assumption you are making and continue.
 
-## Fallback PRD Outline
+## Bundled PRD Outline
 
-If the reference file is unavailable, use this structure:
+Use this structure when writing the final PRD:
 
 1. タイトル
 2. 要約
