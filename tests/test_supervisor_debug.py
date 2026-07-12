@@ -353,6 +353,67 @@ def test_monitor_pr_comments_from_issue_keeps_self_comments(monkeypatch, tmp_pat
     assert "This is my own PR comment" in captured_env["AI_AUTO_DEV_PR_NEW_COMMENTS"]
 
 
+def test_monitor_pr_comments_from_issue_ignores_ai_reply_comments(monkeypatch, tmp_path):
+    candidate = supervisor.PRTrackingCandidate(
+        issue=supervisor.Issue(
+            14,
+            "進捗表示",
+            "Add lightweight mutation progress reporting on stderr.",
+            "https://example.invalid/issues/14",
+        ),
+        pr_number=16,
+        pr_url="https://github.com/goropikari/gomut/pull/16",
+        branch_name="issue-14-prd-1-all-2-ci",
+        pr_ready_at=supervisor.dt.datetime(
+            2026, 7, 12, 14, 40, 49, tzinfo=supervisor.dt.timezone.utc
+        ),
+        checkpoint_at=None,
+        checkpoint_id=None,
+    )
+    captured_env: dict[str, str] = {}
+
+    monkeypatch.setattr(supervisor, "configured_github_user", lambda: "goropikari")
+    monkeypatch.setattr(
+        supervisor,
+        "load_pull_request_comments",
+        lambda repo_name, number: [
+            {
+                "id": 2,
+                "author_login": "goropikari",
+                "body": "AI からの返信:\nThis should not be reprocessed",
+                "created_at": "2026-07-12T14:41:10Z",
+                "kind": "review",
+            }
+        ],
+    )
+    monkeypatch.setattr(supervisor, "worktree_exists", lambda path: True)
+    monkeypatch.setattr(supervisor, "push_worktree_branch", lambda *args, **kwargs: None)
+    monkeypatch.setattr(supervisor, "issue_comment", lambda *args, **kwargs: None)
+
+    class FakeWorker:
+        pid = 456
+
+        def wait(self, timeout=None):
+            return 0
+
+    def fake_popen(*args, **kwargs):
+        captured_env.update(kwargs.get("env", {}))
+        return FakeWorker()
+
+    monkeypatch.setattr(supervisor.subprocess, "Popen", fake_popen)
+
+    return_code = supervisor.monitor_pr_comments_from_issue(
+        tmp_path,
+        "goropikari/gomut",
+        candidate,
+        ["ai-auto-dev-worker-light"],
+        retry_delay_seconds=1,
+    )
+
+    assert return_code == 0
+    assert "AI からの返信:" not in captured_env.get("AI_AUTO_DEV_PR_NEW_COMMENTS", "")
+
+
 def test_select_candidate_asks_for_clarification_once(monkeypatch, tmp_path):
     monkeypatch.setattr(
         supervisor,

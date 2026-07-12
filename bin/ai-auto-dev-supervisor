@@ -1382,6 +1382,10 @@ def issue_checkpoint_comment(
     return latest_comment
 
 
+def is_ai_reply_comment_body(body: str) -> bool:
+    return body.lstrip().startswith("AI からの返信:")
+
+
 def format_pr_checkpoint_comment(
     pr_url: str,
     *,
@@ -2102,8 +2106,11 @@ def monitor_pr_comments_from_issue(
     pending_comments: list[dict[str, object]] = []
     for comment in pr_comments:
         comment_id = comment.get("id")
+        body = str(comment.get("body", ""))
         created_at = parse_iso8601(comment.get("created_at") or comment.get("createdAt"))
         if created_at is None:
+            continue
+        if is_ai_reply_comment_body(body):
             continue
         if checkpoint_at is not None:
             if created_at < checkpoint_at:
