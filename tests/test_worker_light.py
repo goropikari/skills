@@ -34,4 +34,5 @@ def test_build_prompt_uses_dw_phase_light(monkeypatch):
     assert "Use the repo's existing `dw-phase-light` workflow for implementation work." in prompt
     assert "Then run `dw-phase-light` and follow the current `CURRENT_STEP.md` exactly." in prompt
     assert "Use the existing dw-phase-light state in the worktree" in prompt
+    assert "Do not commit, stage, or include files under `docs/reviews/` in the PR." in prompt
     assert "dw-phase` workflow" not in prompt

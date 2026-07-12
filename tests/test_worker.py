@@ -46,6 +46,7 @@ def test_build_prompt_includes_resume_mode(monkeypatch):
         "Do not treat a phase as complete until the review suite has been run for that phase or subphase."
         in prompt
     )
+    assert "Do not commit, stage, or include files under `docs/reviews/` in the PR." in prompt
     assert "only after the current phase or subphase is fully complete" in prompt
     assert (
         "Do not run the review suite after intermediate steps inside a phase or subphase."

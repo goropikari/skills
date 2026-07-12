@@ -19,6 +19,11 @@ REQUIRED_REVIEW_SUITE = (
     "comment-review-orchestrator",
 )
 PR_COMMENT_MODE = "pr-comments"
+REVIEW_ARTIFACT_RULES = (
+    "- Treat review outputs as ephemeral diagnostics.",
+    "- Do not commit, stage, or include files under `docs/reviews/` in the PR.",
+    "- If a review tool creates a Markdown report, leave it untracked or delete it before finishing unless the user explicitly asked to ship that artifact.",
+)
 
 
 def env(name: str, default: str = "") -> str:
@@ -40,6 +45,7 @@ def review_suite_lines() -> list[str]:
         *[f"- `{review}`" for review in REQUIRED_REVIEW_SUITE],
         "- Run the suite from the current worktree only after the current phase or subphase is fully complete.",
         "- Do not treat a phase as complete until the review suite has been run for that phase or subphase.",
+        *REVIEW_ARTIFACT_RULES,
     ]
 
 

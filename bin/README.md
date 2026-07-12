@@ -10,6 +10,7 @@
 - 新規 issue の worktree は最新の `origin/main` を起点に作成します。
 - PR 作成だけ失敗した場合は `resume_mode=pr` で worker を再起動し、実装済みの worktree から PR だけを作り直します。
 - 各 phase 完了時には worker が `ta-review`、`tta-review`、`jr`、`comment-review-orchestrator` を実行してから次の phase に進みます。
+- これらの review が生成する `docs/reviews/` 配下の Markdown は診断用の一時成果物として扱い、PR や commit に含めません。
 - 作成済み PR にコメントが付いたら、worker がそのコメントに応答し、必要なら `AI からの返信:` を含むコメントを返します。
 - 人間の判断が必要な場合は、AI がその旨を PR コメントに明記します。
 

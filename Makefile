@@ -2,7 +2,7 @@ SKILL_DIRS := $(sort $(patsubst %/SKILL.md,%,$(wildcard */SKILL.md)))
 TARGET_SKILL_ROOTS := $(HOME)/.claude/skills $(HOME)/.agents/skills
 PYTHON_FILES := $(shell git ls-files '*.py')
 
-.PHONY: default install link copy fmt
+.PHONY: default install link copy fmt lint
 
 default: copy
 
@@ -44,3 +44,6 @@ fmt:
 	@if [ -n "$(PYTHON_FILES)" ]; then \
 		ruff format $(PYTHON_FILES); \
 	fi
+
+lint:
+	gitleaks detect --no-banner --redact --source .
