@@ -145,6 +145,142 @@ def test_load_state_infers_tracking_mode_from_legacy_fields(tmp_path):
     assert supervisor.is_tracking_active(state)
 
 
+def test_select_pr_tracking_candidate_from_issue_comments(monkeypatch, tmp_path):
+    monkeypatch.setattr(supervisor, "configured_github_user", lambda: "goropikari")
+    monkeypatch.setattr(
+        supervisor,
+        "list_open_issues",
+        lambda label_name: [
+            supervisor.Issue(
+                14,
+                "進捗表示",
+                "Add lightweight mutation progress reporting on stderr.",
+                "https://example.invalid/issues/14",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        supervisor,
+        "list_open_pull_requests",
+        lambda: [
+            supervisor.PullRequest(
+                16,
+                "進捗表示",
+                "Closes #14",
+                "https://github.com/goropikari/gomut/pull/16",
+                head_ref_name="issue-14-prd-1-all-2-ci",
+                author_login="goropikari",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        supervisor,
+        "load_issue_comments",
+        lambda repo_name, number: [
+            {
+                "id": 1,
+                "author_login": "goropikari",
+                "body": "[ai-auto-dev] pr ready: https://github.com/goropikari/gomut/pull/16",
+                "created_at": "2026-07-12T14:40:49Z",
+                "kind": "issue",
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        supervisor,
+        "load_pull_request",
+        lambda repo_name, number: {
+            "state": "open",
+            "merged_at": None,
+            "author": {"login": "goropikari"},
+        },
+    )
+    monkeypatch.setattr(supervisor, "list_local_branches", lambda repo_root: [])
+
+    candidate = supervisor.select_pr_tracking_candidate_from_issues(
+        tmp_path,
+        "goropikari/gomut",
+        label_name=supervisor.LABEL_NAME,
+        debug=True,
+    )
+
+    assert candidate is not None
+    assert candidate.issue.number == 14
+    assert candidate.pr_number == 16
+    assert candidate.pr_url == "https://github.com/goropikari/gomut/pull/16"
+    assert candidate.branch_name == "issue-14-prd-1-all-2-ci"
+    assert candidate.pr_ready_at == supervisor.dt.datetime(
+        2026, 7, 12, 14, 40, 49, tzinfo=supervisor.dt.timezone.utc
+    )
+
+
+def test_monitor_pr_comments_from_issue_posts_checkpoint(monkeypatch, tmp_path):
+    candidate = supervisor.PRTrackingCandidate(
+        issue=supervisor.Issue(
+            14,
+            "進捗表示",
+            "Add lightweight mutation progress reporting on stderr.",
+            "https://example.invalid/issues/14",
+        ),
+        pr_number=16,
+        pr_url="https://github.com/goropikari/gomut/pull/16",
+        branch_name="issue-14-prd-1-all-2-ci",
+        pr_ready_at=supervisor.dt.datetime(
+            2026, 7, 12, 14, 40, 49, tzinfo=supervisor.dt.timezone.utc
+        ),
+        checkpoint_at=None,
+        checkpoint_id=None,
+    )
+    captured_env: dict[str, str] = {}
+    posted_comments: list[tuple[str, int, str]] = []
+
+    monkeypatch.setattr(supervisor, "configured_github_user", lambda: None)
+    monkeypatch.setattr(
+        supervisor,
+        "load_pull_request_comments",
+        lambda repo_name, number: [
+            {
+                "id": 2,
+                "author_login": "reviewer",
+                "body": "Please clarify this",
+                "created_at": "2026-07-12T14:41:10Z",
+                "kind": "review",
+            }
+        ],
+    )
+    monkeypatch.setattr(supervisor, "worktree_exists", lambda path: True)
+    monkeypatch.setattr(supervisor, "push_worktree_branch", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        supervisor,
+        "issue_comment",
+        lambda repo_name, number, body: posted_comments.append((repo_name, number, body)),
+    )
+
+    class FakeWorker:
+        pid = 456
+
+        def wait(self, timeout=None):
+            return 0
+
+    def fake_popen(*args, **kwargs):
+        captured_env.update(kwargs.get("env", {}))
+        return FakeWorker()
+
+    monkeypatch.setattr(supervisor.subprocess, "Popen", fake_popen)
+
+    return_code = supervisor.monitor_pr_comments_from_issue(
+        tmp_path,
+        "goropikari/gomut",
+        candidate,
+        ["ai-auto-dev-worker-light"],
+        retry_delay_seconds=1,
+    )
+
+    assert return_code == 0
+    assert "Please clarify this" in captured_env["AI_AUTO_DEV_PR_NEW_COMMENTS"]
+    assert any(supervisor.PR_CHECKPOINT_MARKER in body for _, _, body in posted_comments)
+
+
 def test_select_candidate_asks_for_clarification_once(monkeypatch, tmp_path):
     monkeypatch.setattr(
         supervisor,

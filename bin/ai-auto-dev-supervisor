@@ -23,6 +23,8 @@ LABEL_NAME = "auto-implement"
 PROCESSING_MARKER = "[ai-auto-dev] processing"
 FAILED_MARKER = "[ai-auto-dev] failed"
 CLARIFICATION_MARKER = "[ai-auto-dev] clarification-needed"
+PR_READY_MARKER = "[ai-auto-dev] pr ready:"
+PR_CHECKPOINT_MARKER = "[ai-auto-dev] pr checkpoint"
 DEFAULT_INTERVAL_SECONDS = 300
 DEFAULT_STALE_AFTER_SECONDS = 3600
 DEFAULT_MAX_RESTARTS = 3
@@ -72,6 +74,17 @@ class Candidate:
             "existing_pr_url": self.existing_pr_url,
             "stale_processing_lock": self.stale_processing_lock,
         }
+
+
+@dataclass(frozen=True)
+class PRTrackingCandidate:
+    issue: Issue
+    pr_number: int
+    pr_url: str
+    branch_name: str
+    pr_ready_at: dt.datetime | None
+    checkpoint_at: dt.datetime | None
+    checkpoint_id: int | None
 
 
 @dataclass
@@ -758,6 +771,166 @@ def select_candidate(
     return None
 
 
+def select_issue_candidate_from_issues(
+    repo_root: Path,
+    repo_name: str,
+    *,
+    label_name: str,
+    stale_after_seconds: int,
+    debug: bool = False,
+) -> Candidate | None:
+    github_user = configured_github_user()
+    issues = list_open_issues(label_name)
+    prs = list_open_pull_requests()
+    local_branches = list_local_branches(repo_root)
+    debug_log(debug, f"found {len(issues)} open issue(s) with label {label_name}")
+
+    for issue in issues:
+        comments = load_issue_comments(repo_name, issue.number)
+        bodies = comment_bodies(comments)
+
+        if issue_has_failed_marker(comments):
+            debug_log(debug, f"skipping issue #{issue.number}: has failed marker comment")
+            continue
+
+        if issue_body_is_sparse(issue):
+            if issue_has_pending_clarification(comments):
+                debug_log(debug, f"skipping issue #{issue.number}: waiting for clarification response")
+                continue
+            if not issue_has_clarification_response(comments):
+                debug_log(debug, f"issue #{issue.number}: body is sparse; asking for clarification")
+                issue_comment(repo_name, issue.number, make_clarification_comment(issue))
+                continue
+
+        if issue_pr_ready_comment(comments, github_user=github_user) is not None:
+            debug_log(debug, f"skipping issue #{issue.number}: PR already ready")
+            continue
+
+        hits = processing_comment_hits(comments)
+        stale_processing = processing_lock_is_stale(comments, stale_after_seconds)
+        if hits and not stale_processing:
+            debug_log(debug, f"skipping issue #{issue.number}: processing lock is fresh")
+            for hit in hits:
+                preview = " ".join(str(hit["body"]).split())
+                if len(preview) > 160:
+                    preview = preview[:160] + "..."
+                debug_log(
+                    debug,
+                    f"  matched processing comment id={hit['id']} created_at={hit['created_at']} body={preview}",
+                )
+            continue
+        if hits and stale_processing:
+            debug_log(debug, f"issue #{issue.number}: processing lock is stale and can be reclaimed")
+            for hit in hits:
+                preview = " ".join(str(hit["body"]).split())
+                if len(preview) > 160:
+                    preview = preview[:160] + "..."
+                debug_log(
+                    debug,
+                    f"  matched processing comment id={hit['id']} created_at={hit['created_at']} body={preview}",
+                )
+
+        slug = derive_slug(f"{issue.title} {issue.body}".strip() or f"issue {issue.number}")
+        branch_name = find_existing_branch(local_branches, issue.number)
+        if branch_name is None:
+            branch_name = branch_name_for(issue.number, issue.title, issue.body)
+        existing_pr = find_existing_pr(issue, prs, github_user=github_user)
+        reuse_branch = find_existing_branch(local_branches, issue.number) or (
+            existing_pr.head_ref_name if existing_pr else None
+        )
+        debug_log(debug, f"selected issue #{issue.number}")
+        return Candidate(
+            issue=issue,
+            slug=slug,
+            branch_name=branch_name,
+            existing_branch=reuse_branch,
+            existing_pr_url=existing_pr.url if existing_pr else None,
+            stale_processing_lock=stale_processing,
+        )
+
+    debug_log(debug, "no eligible issue found")
+    return None
+
+
+def select_pr_tracking_candidate_from_issues(
+    repo_root: Path,
+    repo_name: str,
+    *,
+    label_name: str,
+    debug: bool = False,
+) -> PRTrackingCandidate | None:
+    github_user = configured_github_user()
+    issues = list_open_issues(label_name)
+    prs = list_open_pull_requests()
+    local_branches = list_local_branches(repo_root)
+    debug_log(debug, f"found {len(issues)} open issue(s) with label {label_name}")
+
+    for issue in issues:
+        comments = load_issue_comments(repo_name, issue.number)
+        if issue_has_failed_marker(comments):
+            continue
+
+        ready_comment = issue_pr_ready_comment(comments, github_user=github_user)
+        if ready_comment is None:
+            continue
+
+        ready_body = str(ready_comment.get("body", ""))
+        pr_url = parse_pr_url_from_ready_comment(ready_body)
+        if pr_url is None:
+            debug_log(debug, f"skipping issue #{issue.number}: PR ready comment does not include a PR URL")
+            continue
+
+        pr_number = parse_pr_number_from_url(pr_url)
+        if pr_number is None:
+            debug_log(debug, f"skipping issue #{issue.number}: could not parse PR number from {pr_url}")
+            continue
+
+        pr = load_pull_request(repo_name, pr_number)
+        if pr is None:
+            debug_log(debug, f"skipping issue #{issue.number}: PR {pr_number} no longer exists")
+            continue
+        if not pr_is_from_configured_user(pr, github_user):
+            debug_log(debug, f"skipping issue #{issue.number}: PR {pr_number} is not authored by configured user")
+            continue
+
+        pr_state = str(pr.get("state") or "").lower()
+        if pr_state == "closed" and not pr.get("merged_at"):
+            issue_comment(
+                repo_name,
+                issue.number,
+                make_failed_comment("PR was closed before merge"),
+            )
+            debug_log(debug, f"skipping issue #{issue.number}: PR {pr_number} was closed before merge")
+            continue
+
+        checkpoint_at, checkpoint_id = latest_pr_checkpoint(
+            comments, pr_url=pr_url, github_user=github_user
+        )
+        pr_ready_at = parse_iso8601(ready_comment.get("created_at") or ready_comment.get("createdAt"))
+        branch_name = (
+            find_existing_pr(issue, prs, github_user=github_user).head_ref_name
+            if find_existing_pr(issue, prs, github_user=github_user) is not None
+            else None
+        )
+        if branch_name is None:
+            branch_name = find_existing_branch(local_branches, issue.number) or branch_name_for(
+                issue.number, issue.title, issue.body
+            )
+        debug_log(debug, f"selected PR tracking for issue #{issue.number} -> PR #{pr_number}")
+        return PRTrackingCandidate(
+            issue=issue,
+            pr_number=pr_number,
+            pr_url=pr_url,
+            branch_name=branch_name,
+            pr_ready_at=pr_ready_at,
+            checkpoint_at=checkpoint_at,
+            checkpoint_id=checkpoint_id,
+        )
+
+    debug_log(debug, "no PR tracking candidate found")
+    return None
+
+
 def issue_comment(repo_name: str, number: int, body: str) -> None:
     subprocess.run(
         ["gh", "issue", "comment", str(number), "--body", body],
@@ -1049,6 +1222,158 @@ def is_process_running(pid: int | None) -> bool:
     except OSError:
         return False
     return True
+
+
+def latest_marked_comment(
+    comments: Iterable[dict[str, object]],
+    *,
+    marker: str,
+    github_user: str | None = None,
+) -> dict[str, object] | None:
+    latest_comment: dict[str, object] | None = None
+    latest_timestamp: dt.datetime | None = None
+    for comment in comments:
+        body = comment.get("body", "")
+        if not isinstance(body, str) or marker not in body:
+            continue
+        author_login = comment.get("author_login")
+        if github_user is not None and author_login != github_user:
+            continue
+        created_at = parse_iso8601(comment.get("created_at") or comment.get("createdAt"))
+        if created_at is not None and (latest_timestamp is None or created_at > latest_timestamp):
+            latest_timestamp = created_at
+            latest_comment = comment
+    return latest_comment
+
+
+def find_comment_line_value(body: str, prefix: str) -> str | None:
+    for line in body.splitlines():
+        if line.lower().startswith(prefix.lower()):
+            return line.split(":", 1)[1].strip() or None
+    return None
+
+
+def parse_pr_number_from_url(pr_url: str) -> int | None:
+    match = re.search(r"/pull/(\d+)(?:[/?#].*)?$", pr_url.strip())
+    if match is None:
+        return None
+    return int(match.group(1))
+
+
+def parse_pr_url_from_ready_comment(body: str) -> str | None:
+    value = find_comment_line_value(body, PR_READY_MARKER)
+    if value is None:
+        return None
+    return value
+
+
+def parse_checkpoint_comment(comment: dict[str, object]) -> tuple[str | None, dt.datetime | None, int | None]:
+    body = str(comment.get("body", ""))
+    pr_url = find_comment_line_value(body, "pr_url:")
+    last_processed_at = parse_iso8601(find_comment_line_value(body, "last_processed_at:"))
+    last_processed_id_raw = find_comment_line_value(body, "last_processed_comment_id:")
+    last_processed_id = None
+    if last_processed_id_raw is not None:
+        try:
+            last_processed_id = int(last_processed_id_raw)
+        except ValueError:
+            last_processed_id = None
+    return pr_url, last_processed_at, last_processed_id
+
+
+def latest_pr_checkpoint(
+    comments: Iterable[dict[str, object]],
+    *,
+    pr_url: str,
+    github_user: str | None = None,
+) -> tuple[dt.datetime | None, int | None]:
+    latest_at: dt.datetime | None = None
+    latest_id: int | None = None
+    latest_comment: dict[str, object] | None = None
+    for comment in comments:
+        body = comment.get("body", "")
+        if not isinstance(body, str) or PR_CHECKPOINT_MARKER not in body:
+            continue
+        author_login = comment.get("author_login")
+        if github_user is not None and author_login != github_user:
+            continue
+        comment_pr_url, processed_at, processed_id = parse_checkpoint_comment(comment)
+        if comment_pr_url != pr_url or processed_at is None:
+            continue
+        if latest_at is None or processed_at > latest_at:
+            latest_at = processed_at
+            latest_id = processed_id
+            latest_comment = comment
+    if latest_comment is None:
+        return None, None
+    return latest_at, latest_id
+
+
+def issue_has_failed_marker(comments: Iterable[dict[str, object]]) -> bool:
+    return any(
+        isinstance(comment.get("body", ""), str) and FAILED_MARKER in str(comment.get("body", ""))
+        for comment in comments
+    )
+
+
+def issue_has_processing_marker(comments: Iterable[dict[str, object]]) -> bool:
+    return any(
+        isinstance(comment.get("body", ""), str) and PROCESSING_MARKER in str(comment.get("body", ""))
+        for comment in comments
+    )
+
+
+def issue_processing_is_fresh(comments: Iterable[dict[str, object]], stale_after_seconds: int) -> bool:
+    return not processing_lock_is_stale(comments, stale_after_seconds)
+
+
+def issue_pr_ready_comment(
+    comments: Iterable[dict[str, object]],
+    *,
+    github_user: str | None = None,
+) -> dict[str, object] | None:
+    return latest_marked_comment(comments, marker=PR_READY_MARKER, github_user=github_user)
+
+
+def issue_checkpoint_comment(
+    comments: Iterable[dict[str, object]],
+    *,
+    pr_url: str,
+    github_user: str | None = None,
+) -> dict[str, object] | None:
+    latest_comment: dict[str, object] | None = None
+    latest_timestamp: dt.datetime | None = None
+    for comment in comments:
+        body = comment.get("body", "")
+        if not isinstance(body, str) or PR_CHECKPOINT_MARKER not in body:
+            continue
+        author_login = comment.get("author_login")
+        if github_user is not None and author_login != github_user:
+            continue
+        comment_pr_url, _, _ = parse_checkpoint_comment(comment)
+        if comment_pr_url != pr_url:
+            continue
+        created_at = parse_iso8601(comment.get("created_at") or comment.get("createdAt"))
+        if created_at is not None and (latest_timestamp is None or created_at > latest_timestamp):
+            latest_timestamp = created_at
+            latest_comment = comment
+    return latest_comment
+
+
+def format_pr_checkpoint_comment(
+    pr_url: str,
+    *,
+    last_processed_at: dt.datetime,
+    last_processed_comment_id: int | None,
+) -> str:
+    lines = [
+        PR_CHECKPOINT_MARKER,
+        f"pr_url: {pr_url}",
+        f"last_processed_at: {last_processed_at.isoformat()}",
+    ]
+    if last_processed_comment_id is not None:
+        lines.append(f"last_processed_comment_id: {last_processed_comment_id}")
+    return "\n".join(lines)
 
 
 def supervise_worker(
@@ -1479,6 +1804,26 @@ def print_candidate(candidate: Candidate) -> None:
     sys.stdout.write("\n")
 
 
+def print_pr_tracking_candidate(candidate: PRTrackingCandidate) -> None:
+    json.dump(
+        {
+            "issue_number": candidate.issue.number,
+            "issue_title": candidate.issue.title,
+            "issue_url": candidate.issue.url,
+            "pr_number": candidate.pr_number,
+            "pr_url": candidate.pr_url,
+            "branch_name": candidate.branch_name,
+            "pr_ready_at": candidate.pr_ready_at.isoformat() if candidate.pr_ready_at else None,
+            "checkpoint_at": candidate.checkpoint_at.isoformat() if candidate.checkpoint_at else None,
+            "checkpoint_id": candidate.checkpoint_id,
+        },
+        sys.stdout,
+        ensure_ascii=False,
+        indent=2,
+    )
+    sys.stdout.write("\n")
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     repo_root = git_repo_root()
@@ -1486,13 +1831,20 @@ def main(argv: list[str] | None = None) -> int:
     state_path = state_file_for(repo_root)
     if args.reset_state:
         reset_state(state_path)
-    state = load_state(state_path)
 
     if args.once:
-        candidate = select_candidate(
+        tracking_candidate = select_pr_tracking_candidate_from_issues(
             repo_root,
             repo_name,
-            state,
+            label_name=args.label,
+            debug=args.debug,
+        )
+        if tracking_candidate is not None:
+            print_pr_tracking_candidate(tracking_candidate)
+            return 0
+        candidate = select_issue_candidate_from_issues(
+            repo_root,
+            repo_name,
             label_name=args.label,
             stale_after_seconds=args.stale_after,
             debug=args.debug,
@@ -1518,45 +1870,46 @@ def main(argv: list[str] | None = None) -> int:
     signal.signal(signal.SIGTERM, handle_signal)
 
     while not shutdown_requested:
-        state = load_state(state_path)
-        if is_tracking_active(state):
-            monitor_tracked_pull_request(
+        tracking_candidate = select_pr_tracking_candidate_from_issues(
+            repo_root,
+            repo_name,
+            label_name=args.label,
+            debug=args.debug,
+        )
+        if tracking_candidate is not None:
+            snapshot = SupervisorState(
+                tracking_issue_number=tracking_candidate.issue.number,
+                tracking_issue_title=tracking_candidate.issue.title,
+                tracking_issue_body=tracking_candidate.issue.body,
+                tracking_issue_url=tracking_candidate.issue.url,
+                tracking_pr_number=tracking_candidate.pr_number,
+                tracking_pr_url=tracking_candidate.pr_url,
+                tracking_branch_name=tracking_candidate.branch_name,
+                tracking_started_at=tracking_candidate.pr_ready_at.isoformat()
+                if tracking_candidate.pr_ready_at
+                else None,
+                tracking_mode=TRACKING_MODE_MONITORING,
+            )
+            save_state(state_path, snapshot)
+            monitor_pr_comments_from_issue(
                 repo_root,
                 repo_name,
-                state_path,
-                state,
+                tracking_candidate,
                 args.worker_cmd,
                 retry_delay_seconds=max(1, min(args.interval, 30)),
             )
             time.sleep(args.interval)
             continue
-        if state.active_issue_number is not None and is_process_running(state.worker_pid):
-            print(
-                json.dumps(
-                    {
-                        "event": "resuming-worker",
-                        "issue_number": state.active_issue_number,
-                        "pid": state.worker_pid,
-                    },
-                    ensure_ascii=False,
-                ),
-                flush=True,
-            )
-            while is_process_running(state.worker_pid) and not shutdown_requested:
-                state.updated_at = utc_now().isoformat()
-                save_state(state_path, state)
-                time.sleep(max(1, min(args.interval, 30)))
-            continue
 
-        candidate = select_candidate(
+        candidate = select_issue_candidate_from_issues(
             repo_root,
             repo_name,
-            state,
             label_name=args.label,
             stale_after_seconds=args.stale_after,
             debug=args.debug,
         )
         if candidate is None:
+            save_state(state_path, SupervisorState(tracking_mode=TRACKING_MODE_IDLE))
             print(
                 json.dumps(
                     {"event": "idle", "sleep_seconds": args.interval},
@@ -1567,17 +1920,267 @@ def main(argv: list[str] | None = None) -> int:
             time.sleep(args.interval)
             continue
 
-        supervise_worker(
+        snapshot = SupervisorState(
+            active_issue_number=candidate.issue.number,
+            active_branch_name=candidate.branch_name,
+            active_slug=candidate.slug,
+            worker_command=args.worker_cmd,
+            tracking_mode=TRACKING_MODE_IDLE,
+        )
+        save_state(state_path, snapshot)
+        supervise_issue_candidate(
             repo_root,
             repo_name,
             candidate,
-            state_path,
-            state,
             args.worker_cmd,
-            max_restarts=args.max_restarts,
             retry_delay_seconds=max(1, min(args.interval, 30)),
         )
         continue
+
+    return 130
+
+
+def supervise_issue_candidate(
+    repo_root: Path,
+    repo_name: str,
+    candidate: Candidate,
+    worker_cmd: list[str],
+    *,
+    retry_delay_seconds: int,
+) -> int:
+    issue_comment(repo_name, candidate.issue.number, make_processing_comment(candidate, worker_cmd))
+    worktree_root = ensure_issue_worktree(repo_root, candidate)
+
+    env = worker_environment(
+        repo_root,
+        worktree_root,
+        repo_name,
+        candidate,
+        SupervisorState(),
+    )
+    worker = subprocess.Popen(
+        worker_cmd,
+        cwd=str(worktree_root),
+        env=env,
+        stdin=subprocess.DEVNULL,
+        stdout=None,
+        stderr=None,
+        text=True,
+        start_new_session=True,
+    )
+    print(
+        json.dumps(
+            {
+                "event": "worker-started",
+                "issue_number": candidate.issue.number,
+                "branch_name": candidate.branch_name,
+                "worktree_root": str(worktree_root),
+                "pid": worker.pid,
+            },
+            ensure_ascii=False,
+        ),
+        flush=True,
+    )
+
+    while True:
+        try:
+            return_code = worker.wait(timeout=retry_delay_seconds)
+        except subprocess.TimeoutExpired:
+            continue
+
+        if return_code == 0:
+            pr = verify_pull_request(repo_root, candidate.issue)
+            if pr is None:
+                issue_comment(
+                    repo_name,
+                    candidate.issue.number,
+                    "[ai-auto-dev] PR not found yet; resuming in PR-only mode.",
+                )
+                return 0
+            push_worktree_branch(worktree_root, candidate.branch_name)
+            issue_comment(repo_name, candidate.issue.number, f"[ai-auto-dev] pr ready: {pr.url}")
+            print(
+                json.dumps(
+                    {
+                        "event": "worker-succeeded",
+                        "issue_number": candidate.issue.number,
+                    },
+                    ensure_ascii=False,
+                ),
+                flush=True,
+            )
+            return 0
+
+        issue_comment(
+            repo_name,
+            candidate.issue.number,
+            make_failed_comment(f"worker exited with {return_code}"),
+        )
+        print(
+            json.dumps(
+                {
+                    "event": "worker-exited",
+                    "issue_number": candidate.issue.number,
+                    "return_code": return_code,
+                },
+                ensure_ascii=False,
+            ),
+            flush=True,
+        )
+        return return_code
+
+
+def post_pr_checkpoint(
+    repo_name: str,
+    issue_number: int,
+    pr_url: str,
+    processed_comments: list[dict[str, object]],
+) -> None:
+    if not processed_comments:
+        return
+    latest_created_at: dt.datetime | None = None
+    latest_comment_id: int | None = None
+    for comment in processed_comments:
+        created_at = parse_iso8601(comment.get("created_at") or comment.get("createdAt"))
+        if created_at is None:
+            continue
+        comment_id = comment.get("id")
+        if latest_created_at is None or created_at > latest_created_at:
+            latest_created_at = created_at
+            latest_comment_id = comment_id if isinstance(comment_id, int) else None
+    if latest_created_at is None:
+        return
+    issue_comment(
+        repo_name,
+        issue_number,
+        format_pr_checkpoint_comment(
+            pr_url,
+            last_processed_at=latest_created_at,
+            last_processed_comment_id=latest_comment_id,
+        ),
+    )
+
+
+def monitor_pr_comments_from_issue(
+    repo_root: Path,
+    repo_name: str,
+    candidate: PRTrackingCandidate,
+    worker_cmd: list[str],
+    *,
+    retry_delay_seconds: int,
+) -> int:
+    github_user = configured_github_user()
+    checkpoint_at = candidate.checkpoint_at
+    checkpoint_id = candidate.checkpoint_id
+    if checkpoint_at is None:
+        checkpoint_at = candidate.pr_ready_at
+        checkpoint_id = None
+
+    pr_comments = load_pull_request_comments(repo_name, candidate.pr_number)
+    pending_comments: list[dict[str, object]] = []
+    for comment in pr_comments:
+        comment_id = comment.get("id")
+        created_at = parse_iso8601(comment.get("created_at") or comment.get("createdAt"))
+        if created_at is None:
+            continue
+        if checkpoint_at is not None:
+            if created_at < checkpoint_at:
+                continue
+            if created_at == checkpoint_at and isinstance(comment_id, int) and checkpoint_id is not None:
+                if comment_id <= checkpoint_id:
+                    continue
+            if created_at == checkpoint_at and checkpoint_id is None:
+                continue
+        if github_user is not None and comment.get("author_login") == github_user:
+            continue
+        pending_comments.append(comment)
+
+    if not pending_comments:
+        return 0
+
+    worktree_root = worktree_root_for(repo_root, candidate.branch_name)
+    if not worktree_exists(worktree_root):
+        worktree_root = ensure_issue_worktree(
+            repo_root,
+            Candidate(
+                issue=candidate.issue,
+                slug=derive_slug(f"{candidate.issue.title} {candidate.issue.body}".strip() or f"issue {candidate.issue.number}"),
+                branch_name=candidate.branch_name,
+                existing_branch=candidate.branch_name,
+                existing_pr_url=candidate.pr_url,
+                stale_processing_lock=False,
+            ),
+        )
+
+    worker_candidate = Candidate(
+        issue=candidate.issue,
+        slug=derive_slug(f"{candidate.issue.title} {candidate.issue.body}".strip() or f"issue {candidate.issue.number}"),
+        branch_name=candidate.branch_name,
+        existing_branch=candidate.branch_name,
+        existing_pr_url=candidate.pr_url,
+        stale_processing_lock=False,
+    )
+    env = pr_comment_worker_environment(
+        repo_root,
+        worktree_root,
+        repo_name,
+        worker_candidate,
+        candidate.pr_number,
+        candidate.pr_url,
+        pending_comments,
+    )
+    worker = subprocess.Popen(
+        worker_cmd,
+        cwd=str(worktree_root),
+        env=env,
+        stdin=subprocess.DEVNULL,
+        stdout=None,
+        stderr=None,
+        text=True,
+        start_new_session=True,
+    )
+    print(
+        json.dumps(
+            {
+                "event": "pr-comment-worker-started",
+                "issue_number": candidate.issue.number,
+                "pr_number": candidate.pr_number,
+                "pid": worker.pid,
+                "new_comment_count": len(pending_comments),
+            },
+            ensure_ascii=False,
+        ),
+        flush=True,
+    )
+
+    while True:
+        try:
+            return_code = worker.wait(timeout=retry_delay_seconds)
+        except subprocess.TimeoutExpired:
+            continue
+
+        if return_code != 0:
+            issue_comment(
+                repo_name,
+                candidate.issue.number,
+                f"AI からの返信: PR comment response worker exited with {return_code}. Human judgment may be required.",
+            )
+            return return_code
+
+        post_pr_checkpoint(repo_name, candidate.issue.number, candidate.pr_url, pending_comments)
+        print(
+            json.dumps(
+                {
+                    "event": "pr-comment-worker-finished",
+                    "issue_number": candidate.issue.number,
+                    "pr_number": candidate.pr_number,
+                    "processed_comment_count": len(pending_comments),
+                },
+                ensure_ascii=False,
+            ),
+            flush=True,
+        )
+        return 0
 
     return 130
 
