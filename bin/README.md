@@ -6,6 +6,7 @@
 
 - `ai-auto-dev-supervisor`: GitHub issue を監視し、1 件ずつ claim して worker を監督します。
 - `ai-auto-dev-worker`: supervisor から渡された issue 情報を使って `codex exec` を実行し、PR まで作成します。
+- `ai-auto-dev-worker-light`: `dw-phase-light` を使う worker 版です。各 phase の完了時のみレビューを挟みます。
 - 新規 issue の worktree は最新の `origin/main` を起点に作成します。
 - PR 作成だけ失敗した場合は `resume_mode=pr` で worker を再起動し、実装済みの worktree から PR だけを作り直します。
 - 各 phase 完了時には worker が `ta-review`、`tta-review`、`jr`、`comment-review-orchestrator` を実行してから次の phase に進みます。
@@ -18,12 +19,14 @@
 
 ```bash
 ai-auto-dev-supervisor --worker-cmd ai-auto-dev-worker
+ai-auto-dev-supervisor --worker-cmd ai-auto-dev-worker-light
 ```
 
 よく使うオプション:
 
 ```bash
 ai-auto-dev-supervisor --interval 120 --stale-after 1800 --max-restarts 2 --worker-cmd ai-auto-dev-worker
+ai-auto-dev-supervisor --interval 120 --stale-after 1800 --max-restarts 2 --worker-cmd ai-auto-dev-worker-light
 ai-auto-dev-supervisor --once
 ```
 
