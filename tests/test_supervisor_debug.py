@@ -90,6 +90,61 @@ def test_reset_state_deletes_cached_state(tmp_path):
     assert not state_file.exists()
 
 
+def test_tracking_state_machine_transitions():
+    state = supervisor.SupervisorState()
+    comments = [{"id": 1}, {"id": 2}]
+
+    supervisor.start_tracking_state(
+        state,
+        issue_number=3,
+        issue_title="Fix login flow",
+        issue_body="Handle stale sessions",
+        issue_url="https://example.invalid/issues/3",
+        pr_number=11,
+        pr_url="https://example.invalid/pr/11",
+        branch_name="issue-3-fix-login-flow",
+        comments=comments,
+    )
+
+    assert supervisor.is_tracking_active(state)
+    assert state.tracking_mode == supervisor.TRACKING_MODE_MONITORING
+    assert state.tracking_issue_number == 3
+    assert state.tracking_pr_number == 11
+    assert state.tracking_pr_comment_ids == [1, 2]
+
+    supervisor.clear_tracking_state(state)
+
+    assert not supervisor.is_tracking_active(state)
+    assert state.tracking_mode == supervisor.TRACKING_MODE_IDLE
+    assert state.tracking_issue_number is None
+    assert state.tracking_pr_number is None
+    assert state.tracking_pr_comment_ids == []
+
+
+def test_load_state_infers_tracking_mode_from_legacy_fields(tmp_path):
+    state_file = tmp_path / "state.json"
+    state_file.write_text(
+        """
+{
+  "tracking_issue_number": 3,
+  "tracking_issue_title": "Fix login flow",
+  "tracking_issue_body": "Handle stale sessions",
+  "tracking_issue_url": "https://example.invalid/issues/3",
+  "tracking_pr_number": 11,
+  "tracking_pr_url": "https://example.invalid/pr/11",
+  "tracking_branch_name": "issue-3-fix-login-flow",
+  "tracking_started_at": "2026-07-12T12:00:00Z",
+  "tracking_pr_comment_ids": [1, 2]
+}
+""".strip()
+    )
+
+    state = supervisor.load_state(state_file)
+
+    assert state.tracking_mode == supervisor.TRACKING_MODE_MONITORING
+    assert supervisor.is_tracking_active(state)
+
+
 def test_select_candidate_asks_for_clarification_once(monkeypatch, tmp_path):
     monkeypatch.setattr(
         supervisor,
@@ -352,6 +407,7 @@ def test_supervise_worker_tracks_open_pr_after_success(monkeypatch, tmp_path):
     assert state.tracking_issue_number == 3
     assert state.tracking_pr_number == 11
     assert state.tracking_pr_comment_ids == [99]
+    assert state.tracking_mode == supervisor.TRACKING_MODE_MONITORING
     assert 3 not in state.completed_issue_numbers
 
 
@@ -613,6 +669,7 @@ def test_monitor_tracked_pull_request_keeps_comments_while_worker_runs(
     )
     assert return_code == 0
     assert state.tracking_pr_comment_ids == [1, 2]
+    assert state.tracking_mode == supervisor.TRACKING_MODE_MONITORING
     assert "First follow-up" in captured_env["AI_AUTO_DEV_PR_NEW_COMMENTS"]
 
     captured_env.clear()

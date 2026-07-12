@@ -24,6 +24,10 @@ REVIEW_ARTIFACT_RULES = (
     "- Do not commit, stage, or include files under `docs/reviews/` in the PR.",
     "- If a review tool creates a Markdown report, leave it untracked or delete it before finishing unless the user explicitly asked to ship that artifact.",
 )
+PR_TEMPLATE_CANDIDATES = (
+    Path(".github/pull_request_template.md"),
+    Path(".github/PULL_REQUEST_TEMPLATE.md"),
+)
 
 
 def env(name: str, default: str = "") -> str:
@@ -60,6 +64,38 @@ def parse_json_list_env(name: str) -> list[dict[str, object]]:
     if isinstance(value, list):
         return [item for item in value if isinstance(item, dict)]
     return []
+
+
+def find_pull_request_template(repo_root: Path) -> Path | None:
+    for candidate in PR_TEMPLATE_CANDIDATES:
+        path = repo_root / candidate
+        if path.is_file():
+            return path
+
+    template_dir = repo_root / ".github" / "PULL_REQUEST_TEMPLATE"
+    if template_dir.is_dir():
+        candidates = sorted(
+            [
+                *template_dir.glob("*.md"),
+                *template_dir.glob("*.markdown"),
+                *template_dir.glob("*.txt"),
+            ]
+        )
+        for path in candidates:
+            if path.is_file():
+                return path
+    return None
+
+
+def read_pull_request_template(repo_root: Path) -> tuple[Path | None, str | None]:
+    template_path = find_pull_request_template(repo_root)
+    if template_path is None:
+        return None, None
+
+    try:
+        return template_path, template_path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return template_path, None
 
 
 def format_pr_comment_context(comments: list[dict[str, object]]) -> str:
@@ -167,6 +203,7 @@ def build_prompt() -> str:
     resume_mode = env("AI_AUTO_DEV_RESUME_MODE")
     existing_branch = env("AI_AUTO_DEV_EXISTING_BRANCH")
     existing_pr_url = env("AI_AUTO_DEV_EXISTING_PR_URL")
+    pr_template_path, pr_template_body = read_pull_request_template(Path(repo_root))
 
     lines = [
         "You are the implementation worker for ai-auto-dev.",
@@ -185,6 +222,9 @@ def build_prompt() -> str:
         "- Keep the issue comment trail updated at phase boundaries.",
         "- Open or update exactly one PR for this issue yourself before you finish.",
         "- Include `Closes #<issue-number>` in the PR body.",
+        "- Write the PR body as Markdown with real line breaks, not escaped `\\n` sequences.",
+        "- Keep the PR body stable and readable: use short headings, bullet lists, and blank lines between sections.",
+        "- If the repository has a pull request template, use it as the body scaffold and preserve its sections instead of inventing a new shape.",
         "- Do not report success until the PR exists.",
         "- If the issue cannot be completed, stop and report the blocker clearly.",
         "",
@@ -239,6 +279,16 @@ def build_prompt() -> str:
         "- Do not stop at PRD improvement when code changes are still required.",
     ]
     )
+    if pr_template_path is not None:
+        lines.extend(
+            [
+                "",
+                "Repository pull request template:",
+                f"Template path: {pr_template_path}",
+            ]
+        )
+        if pr_template_body:
+            lines.extend(["", pr_template_body])
     return "\n".join(lines)
 
 

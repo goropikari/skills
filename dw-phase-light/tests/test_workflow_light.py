@@ -102,13 +102,21 @@ def test_phase_internal_steps_progress_without_review(tmp_path, monkeypatch):
     assert run_command(monkeypatch, "next") == 0
     assert "- **Local Stage**: gherkin" in current_state(tmp_path)
 
-    gherkin = tmp_path / ".dev-workflow-phase-light" / "phase1" / "02_gherkin" / "spec.feature"
+    gherkin = (
+        tmp_path
+        / ".dev-workflow-phase-light"
+        / "phase1"
+        / "02_gherkin"
+        / "spec.feature"
+    )
     gherkin.parent.mkdir(parents=True)
     gherkin.write_text("Feature: Search\n", encoding="utf-8")
     assert run_command(monkeypatch, "next") == 0
     assert "- **Local Stage**: test-design" in current_state(tmp_path)
 
-    test_design = tmp_path / ".dev-workflow-phase-light" / "phase1" / "03_test_design.md"
+    test_design = (
+        tmp_path / ".dev-workflow-phase-light" / "phase1" / "03_test_design.md"
+    )
     test_design.write_text("- **Split**: no\n", encoding="utf-8")
     assert run_command(monkeypatch, "next") == 0
     assert "- **Local Stage**: interface" in current_state(tmp_path)

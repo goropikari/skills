@@ -16,9 +16,18 @@ spec.loader.exec_module(worker)
 
 
 def test_build_prompt_includes_resume_mode(monkeypatch):
-    monkeypatch.setenv("AI_AUTO_DEV_REPO_ROOT", "/tmp/repo")
+    repo_root = Path("/tmp/repo-worker")
+    template_path = repo_root / ".github" / "PULL_REQUEST_TEMPLATE.md"
+    template_path.parent.mkdir(parents=True, exist_ok=True)
+    template_path.write_text(
+        "# Summary\n\n- What changed\n- Why it changed\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv("AI_AUTO_DEV_REPO_ROOT", str(repo_root))
     monkeypatch.setenv(
-        "AI_AUTO_DEV_WORKTREE_ROOT", "/tmp/repo/.worktrees/issue-42-fix-login-flow"
+        "AI_AUTO_DEV_WORKTREE_ROOT",
+        "/tmp/repo-worker/.worktrees/issue-42-fix-login-flow",
     )
     monkeypatch.setenv("AI_AUTO_DEV_REPO_NAME", "example/repo")
     monkeypatch.setenv("AI_AUTO_DEV_ISSUE_NUMBER", "42")
@@ -31,7 +40,9 @@ def test_build_prompt_includes_resume_mode(monkeypatch):
 
     prompt = worker.build_prompt()
 
-    assert "Worktree root: /tmp/repo/.worktrees/issue-42-fix-login-flow" in prompt
+    assert (
+        "Worktree root: /tmp/repo-worker/.worktrees/issue-42-fix-login-flow" in prompt
+    )
     assert (
         "Open or update exactly one PR for this issue yourself before you finish."
         in prompt
@@ -46,7 +57,10 @@ def test_build_prompt_includes_resume_mode(monkeypatch):
         "Do not treat a phase as complete until the review suite has been run for that phase or subphase."
         in prompt
     )
-    assert "Do not commit, stage, or include files under `docs/reviews/` in the PR." in prompt
+    assert (
+        "Do not commit, stage, or include files under `docs/reviews/` in the PR."
+        in prompt
+    )
     assert "only after the current phase or subphase is fully complete" in prompt
     assert (
         "Do not run the review suite after intermediate steps inside a phase or subphase."
@@ -56,6 +70,10 @@ def test_build_prompt_includes_resume_mode(monkeypatch):
     assert (
         "Do not stop at PRD improvement when code changes are still required." in prompt
     )
+    assert "Write the PR body as Markdown with real line breaks" in prompt
+    assert "Repository pull request template:" in prompt
+    assert "Template path: /tmp/repo-worker/.github/PULL_REQUEST_TEMPLATE.md" in prompt
+    assert "# Summary" in prompt
 
 
 def test_build_prompt_includes_pr_comment_mode(monkeypatch):

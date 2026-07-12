@@ -28,6 +28,8 @@ DEFAULT_STALE_AFTER_SECONDS = 3600
 DEFAULT_MAX_RESTARTS = 3
 DEFAULT_PR_RESUME_FAILURES = 2
 STATE_DIR = Path(os.environ.get("AI_AUTO_DEV_SUPERVISOR_STATE_DIR", "/tmp"))
+TRACKING_MODE_IDLE = "idle"
+TRACKING_MODE_MONITORING = "monitoring"
 
 
 @dataclass(frozen=True)
@@ -91,6 +93,7 @@ class SupervisorState:
     tracking_branch_name: str | None = None
     tracking_started_at: str | None = None
     tracking_pr_comment_ids: list[int] | None = None
+    tracking_mode: str | None = None
     completed_issue_numbers: set[int] | None = None
     failed_issue_numbers: set[int] | None = None
     updated_at: str | None = None
@@ -169,6 +172,11 @@ def load_state(path: Path) -> SupervisorState:
     tracking_comment_ids = raw.get("tracking_pr_comment_ids")
     if not isinstance(tracking_comment_ids, list):
         tracking_comment_ids = []
+    tracking_mode = normalize_tracking_mode(
+        raw.get("tracking_mode"),
+        tracking_issue_number=raw.get("tracking_issue_number"),
+        tracking_pr_number=raw.get("tracking_pr_number"),
+    )
     return SupervisorState(
         active_issue_number=raw.get("active_issue_number"),
         active_branch_name=raw.get("active_branch_name"),
@@ -187,6 +195,7 @@ def load_state(path: Path) -> SupervisorState:
         tracking_branch_name=raw.get("tracking_branch_name"),
         tracking_started_at=raw.get("tracking_started_at"),
         tracking_pr_comment_ids=list(tracking_comment_ids),
+        tracking_mode=tracking_mode,
         completed_issue_numbers=set(raw.get("completed_issue_numbers", [])),
         failed_issue_numbers=set(raw.get("failed_issue_numbers", [])),
         updated_at=raw.get("updated_at"),
@@ -217,6 +226,11 @@ def save_state(path: Path, state: SupervisorState) -> None:
         "tracking_branch_name": state.tracking_branch_name,
         "tracking_started_at": state.tracking_started_at,
         "tracking_pr_comment_ids": sorted(state.tracking_pr_comment_ids or []),
+        "tracking_mode": normalize_tracking_mode(
+            state.tracking_mode,
+            tracking_issue_number=state.tracking_issue_number,
+            tracking_pr_number=state.tracking_pr_number,
+        ),
         "completed_issue_numbers": sorted(state.completed_issue_numbers or set()),
         "failed_issue_numbers": sorted(state.failed_issue_numbers or set()),
         "updated_at": utc_now().isoformat(),
@@ -853,6 +867,57 @@ def clear_tracking_state(state: SupervisorState) -> None:
     state.tracking_branch_name = None
     state.tracking_started_at = None
     state.tracking_pr_comment_ids = []
+    state.tracking_mode = TRACKING_MODE_IDLE
+
+
+def normalize_tracking_mode(
+    tracking_mode: str | None,
+    *,
+    tracking_issue_number: int | None,
+    tracking_pr_number: int | None,
+) -> str:
+    if tracking_mode in {TRACKING_MODE_IDLE, TRACKING_MODE_MONITORING}:
+        return tracking_mode
+    if tracking_issue_number is not None and tracking_pr_number is not None:
+        return TRACKING_MODE_MONITORING
+    return TRACKING_MODE_IDLE
+
+
+def is_tracking_active(state: SupervisorState) -> bool:
+    tracking_mode = normalize_tracking_mode(
+        state.tracking_mode,
+        tracking_issue_number=state.tracking_issue_number,
+        tracking_pr_number=state.tracking_pr_number,
+    )
+    return (
+        tracking_mode == TRACKING_MODE_MONITORING
+        and state.tracking_issue_number is not None
+        and state.tracking_pr_number is not None
+    )
+
+
+def start_tracking_state(
+    state: SupervisorState,
+    *,
+    issue_number: int,
+    issue_title: str,
+    issue_body: str,
+    issue_url: str,
+    pr_number: int,
+    pr_url: str,
+    branch_name: str,
+    comments: Iterable[dict[str, object]],
+) -> None:
+    state.tracking_issue_number = issue_number
+    state.tracking_issue_title = issue_title
+    state.tracking_issue_body = issue_body
+    state.tracking_issue_url = issue_url
+    state.tracking_pr_number = pr_number
+    state.tracking_pr_url = pr_url
+    state.tracking_branch_name = branch_name
+    state.tracking_started_at = utc_now().isoformat()
+    seed_tracking_comments(state, comments)
+    state.tracking_mode = TRACKING_MODE_MONITORING
 
 
 def tracked_comment_id_set(state: SupervisorState) -> set[int]:
@@ -1086,15 +1151,17 @@ def supervise_worker(
             clear_pr_resume_failures(state)
             issue_comment(repo_name, candidate.issue.number, f"[ai-auto-dev] pr ready: {pr.url}")
             current_comments = load_pull_request_comments(repo_name, pr.number)
-            state.tracking_issue_number = candidate.issue.number
-            state.tracking_issue_title = candidate.issue.title
-            state.tracking_issue_body = candidate.issue.body
-            state.tracking_issue_url = candidate.issue.url
-            state.tracking_pr_number = pr.number
-            state.tracking_pr_url = pr.url
-            state.tracking_branch_name = candidate.branch_name
-            state.tracking_started_at = utc_now().isoformat()
-            seed_tracking_comments(state, current_comments)
+            start_tracking_state(
+                state,
+                issue_number=candidate.issue.number,
+                issue_title=candidate.issue.title,
+                issue_body=candidate.issue.body,
+                issue_url=candidate.issue.url,
+                pr_number=pr.number,
+                pr_url=pr.url,
+                branch_name=candidate.branch_name,
+                comments=current_comments,
+            )
             state.active_issue_number = None
             state.active_branch_name = None
             state.active_slug = None
@@ -1195,8 +1262,9 @@ def monitor_tracked_pull_request(
     *,
     retry_delay_seconds: int,
 ) -> int:
-    if state.tracking_pr_number is None or state.tracking_issue_number is None:
+    if not is_tracking_active(state):
         return 0
+    state.tracking_mode = TRACKING_MODE_MONITORING
 
     github_user = configured_github_user()
     started_at = parse_iso8601(state.tracking_started_at)
@@ -1451,7 +1519,7 @@ def main(argv: list[str] | None = None) -> int:
 
     while not shutdown_requested:
         state = load_state(state_path)
-        if state.tracking_pr_number is not None and state.tracking_issue_number is not None:
+        if is_tracking_active(state):
             monitor_tracked_pull_request(
                 repo_root,
                 repo_name,

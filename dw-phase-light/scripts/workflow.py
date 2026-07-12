@@ -479,7 +479,9 @@ def invalid(message: str, state: WorkflowState, base_dir: Path) -> int:
     write_state(base_dir, WorkflowState(**{**state.__dict__, "status": "IN_PROGRESS"}))
     print_header(RED, "DW-PHASE-LIGHT: INVALID WORKFLOW METADATA")
     print(message)
-    print("対象成果物を修正し、必要な場合のみ phase 完了時の review / approve をやり直してください。")
+    print(
+        "対象成果物を修正し、必要な場合のみ phase 完了時の review / approve をやり直してください。"
+    )
     print(
         f"通常手順: `{DW_REVIEW_COMMAND}` -> `{DW_APPROVE_COMMAND}` -> `{DW_NEXT_COMMAND}`"
     )
@@ -490,7 +492,10 @@ def invalid(message: str, state: WorkflowState, base_dir: Path) -> int:
 def transition_from_next(base_dir: Path, state: WorkflowState) -> int:
     if state.global_step == 0:
         requirements = current_requirements_path(base_dir)
-        if not requirements.exists() or not requirements.read_text(encoding="utf-8").strip():
+        if (
+            not requirements.exists()
+            or not requirements.read_text(encoding="utf-8").strip()
+        ):
             return invalid(
                 f"`{STATE_DIR}/00_project_requirements.md` を作成してから次へ進んでください。",
                 state,
@@ -640,7 +645,9 @@ def transition_from_next(base_dir: Path, state: WorkflowState) -> int:
             return 0
         if state.status != "REVIEWED":
             print_header(YELLOW, "DW-PHASE-LIGHT: PHASE COMPLETE, REVIEW REQUIRED")
-            print("この phase の実装は完了しています。次は review でレビュー待ちに移行してください。")
+            print(
+                "この phase の実装は完了しています。次は review でレビュー待ちに移行してください。"
+            )
             print(f"実行: `{DW_REVIEW_COMMAND}`")
             print(f"{YELLOW}{BOLD}========================================={RESET}")
             return 0
