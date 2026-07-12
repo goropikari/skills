@@ -260,11 +260,15 @@ def test_monitor_pr_comments_from_issue_posts_checkpoint(monkeypatch, tmp_path):
         ],
     )
     monkeypatch.setattr(supervisor, "worktree_exists", lambda path: True)
-    monkeypatch.setattr(supervisor, "push_worktree_branch", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        supervisor, "push_worktree_branch", lambda *args, **kwargs: None
+    )
     monkeypatch.setattr(
         supervisor,
         "issue_comment",
-        lambda repo_name, number, body: posted_comments.append((repo_name, number, body)),
+        lambda repo_name, number, body: posted_comments.append(
+            (repo_name, number, body)
+        ),
     )
 
     class FakeWorker:
@@ -289,7 +293,9 @@ def test_monitor_pr_comments_from_issue_posts_checkpoint(monkeypatch, tmp_path):
 
     assert return_code == 0
     assert "Please clarify this" in captured_env["AI_AUTO_DEV_PR_NEW_COMMENTS"]
-    assert any(supervisor.PR_CHECKPOINT_MARKER in body for _, _, body in posted_comments)
+    assert any(
+        supervisor.PR_CHECKPOINT_MARKER in body for _, _, body in posted_comments
+    )
 
 
 def test_monitor_pr_comments_from_issue_keeps_self_comments(monkeypatch, tmp_path):
@@ -326,7 +332,9 @@ def test_monitor_pr_comments_from_issue_keeps_self_comments(monkeypatch, tmp_pat
         ],
     )
     monkeypatch.setattr(supervisor, "worktree_exists", lambda path: True)
-    monkeypatch.setattr(supervisor, "push_worktree_branch", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        supervisor, "push_worktree_branch", lambda *args, **kwargs: None
+    )
     monkeypatch.setattr(supervisor, "issue_comment", lambda *args, **kwargs: None)
 
     class FakeWorker:
@@ -353,7 +361,9 @@ def test_monitor_pr_comments_from_issue_keeps_self_comments(monkeypatch, tmp_pat
     assert "This is my own PR comment" in captured_env["AI_AUTO_DEV_PR_NEW_COMMENTS"]
 
 
-def test_monitor_pr_comments_from_issue_ignores_ai_reply_comments(monkeypatch, tmp_path):
+def test_monitor_pr_comments_from_issue_ignores_ai_reply_comments(
+    monkeypatch, tmp_path
+):
     candidate = supervisor.PRTrackingCandidate(
         issue=supervisor.Issue(
             14,
@@ -387,7 +397,9 @@ def test_monitor_pr_comments_from_issue_ignores_ai_reply_comments(monkeypatch, t
         ],
     )
     monkeypatch.setattr(supervisor, "worktree_exists", lambda path: True)
-    monkeypatch.setattr(supervisor, "push_worktree_branch", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        supervisor, "push_worktree_branch", lambda *args, **kwargs: None
+    )
     monkeypatch.setattr(supervisor, "issue_comment", lambda *args, **kwargs: None)
 
     class FakeWorker:
