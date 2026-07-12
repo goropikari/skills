@@ -3,7 +3,7 @@ name: prd-maker
 description: Interview the user one question at a time to turn rough ideas, feature requests, or ambiguous requirements into a Japanese PRD. Use when the user asks to create, draft, refine, or pressure-test a PRD, product requirements, or feature spec.
 ---
 
-# Grill Prd
+# PRD Maker
 
 ## Overview
 
@@ -25,7 +25,9 @@ Use this skill to interview the user until the product intent is clear enough to
    - Skip questions that can be inferred from context.
    - Stop asking once the remaining gaps are minor assumptions that can be stated explicitly.
 5. Draft the PRD when ready.
-   - Use `references/prd-template.md` as the default outline.
+   - Use the bundled PRD outline as the default structure.
+   - If `references/prd-template.md` is available, follow it.
+   - If the template file is not available in context, use the fallback outline in this skill body.
    - Write a complete Markdown PRD with assumptions, scope, and open questions called out clearly.
    - If the user wants a revision, update the PRD instead of restarting the interview.
 
@@ -53,3 +55,24 @@ Use this order unless the user already answered a later question:
 - Treat the conversation as a decision tree, not a free-form brainstorm.
 - If the user asks for a PRD from an existing product or codebase, anchor the PRD to the current behavior before proposing new behavior.
 - When the request is ambiguous, state the assumption you are making and continue.
+
+## Fallback PRD Outline
+
+If the reference file is unavailable, use this structure:
+
+1. タイトル
+2. 要約
+3. 課題
+4. 目的
+5. 非対象
+6. 対象ユーザー
+7. スコープ
+8. ユーザーフロー
+9. 機能要件
+10. 制約と依存関係
+11. 成功指標
+12. リスクと例外
+13. リリース計画
+14. 未解決事項
+15. 前提
+16. 付録
