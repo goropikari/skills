@@ -2113,8 +2113,6 @@ def monitor_pr_comments_from_issue(
                     continue
             if created_at == checkpoint_at and checkpoint_id is None:
                 continue
-        if github_user is not None and comment.get("author_login") == github_user:
-            continue
         pending_comments.append(comment)
 
     if not pending_comments:
