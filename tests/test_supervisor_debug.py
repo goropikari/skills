@@ -145,6 +145,18 @@ def test_load_state_infers_tracking_mode_from_legacy_fields(tmp_path):
     assert supervisor.is_tracking_active(state)
 
 
+def test_pull_request_author_login_uses_user_login():
+    assert (
+        supervisor.pull_request_author_login(
+            {
+                "user": {"login": "goropikari"},
+                "author": None,
+            }
+        )
+        == "goropikari"
+    )
+
+
 def test_select_pr_tracking_candidate_from_issue_comments(monkeypatch, tmp_path):
     monkeypatch.setattr(supervisor, "configured_github_user", lambda: "goropikari")
     monkeypatch.setattr(

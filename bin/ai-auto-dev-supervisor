@@ -337,6 +337,11 @@ def pull_request_author_login(pr: dict[str, object] | PullRequest | None) -> str
         login = author.get("login")
         if isinstance(login, str):
             return login
+    user = pr.get("user")
+    if isinstance(user, dict):
+        login = user.get("login")
+        if isinstance(login, str):
+            return login
     author_login = pr.get("author_login")
     if isinstance(author_login, str):
         return author_login
