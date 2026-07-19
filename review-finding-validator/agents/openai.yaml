@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Finding Validator"
+  short_description: "Validate review findings against code, tests, and behavior"
+  default_prompt: "Validate the supplied code review findings and report which are substantiated, uncertain, duplicated, or invalid."

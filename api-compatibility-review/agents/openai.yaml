@@ -1,0 +1,4 @@
+interface:
+  display_name: "API Compatibility Review"
+  short_description: "Check API, event, CLI, and configuration contract compatibility"
+  default_prompt: "Review the supplied interface change for backward-compatibility and contract risks."

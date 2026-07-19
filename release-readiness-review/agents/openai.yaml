@@ -1,0 +1,4 @@
++interface:
+  display_name: "Release Readiness Review"
+  short_description: "Assess rollout, rollback, and post-deploy readiness"
+  default_prompt: "Assess whether the supplied change is ready for safe release."

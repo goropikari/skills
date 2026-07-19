@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Orchestrator"
+  short_description: "Select and coordinate context-specific reviews"
+  default_prompt: "Select the appropriate review skills for the supplied change, run only the necessary reviews, and consolidate their findings."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Security Review"
+  short_description: "Review changed code for concrete security and privacy risks"
+  default_prompt: "Review the supplied change for concrete security and privacy risks."

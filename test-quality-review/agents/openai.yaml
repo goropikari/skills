@@ -1,0 +1,4 @@
++interface:
+  display_name: "Test Quality Review"
+  short_description: "Assess test strength, isolation, and failure detection"
+  default_prompt: "Review the supplied tests for effectiveness, isolation, determinism, and maintainability."

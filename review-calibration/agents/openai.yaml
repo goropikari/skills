@@ -1,0 +1,4 @@
++interface:
+  display_name: "Review Calibration"
+  short_description: "Normalize and deduplicate multi-reviewer findings"
+  default_prompt: "Calibrate and merge the supplied review findings without performing a new broad review."

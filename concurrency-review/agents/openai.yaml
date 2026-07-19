@@ -1,0 +1,4 @@
++interface:
+  display_name: "Concurrency Review"
+  short_description: "Review races, leaks, deadlocks, and cancellation risks"
+  default_prompt: "Review the supplied concurrent code for race, lifecycle, and synchronization risks."

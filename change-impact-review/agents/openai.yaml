@@ -1,0 +1,4 @@
++interface:
+  display_name: "Change Impact Review"
+  short_description: "Trace changes across callers, systems, and operations"
+  default_prompt: "Analyze the change impact of the supplied diff or implementation plan."

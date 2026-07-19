@@ -1,0 +1,4 @@
+interface:
+  display_name: "Data Integrity Review"
+  short_description: "Review database, migration, persistence, and recovery risks"
+  default_prompt: "Review the supplied database or persistence change for data integrity risks."

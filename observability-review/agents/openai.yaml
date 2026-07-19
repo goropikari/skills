@@ -1,0 +1,4 @@
+interface:
+  display_name: "Observability Review"
+  short_description: "Review logging, metrics, tracing, alerts, and diagnosability"
+  default_prompt: "Review the supplied change for observability and operational diagnosability gaps."
