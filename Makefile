@@ -45,5 +45,5 @@ fmt:
 		ruff format $(PYTHON_FILES); \
 	fi
 
-lint:
+lint: fmt
 	gitleaks detect --no-banner --redact --source .
