@@ -1,4 +1,6 @@
+import shutil
 import sys
+from pathlib import Path
 
 DEFAULT_LINTER_SET = "standard"
 DEFAULT_ENABLED_LINTERS = [
@@ -7,14 +9,16 @@ DEFAULT_ENABLED_LINTERS = [
     "cyclop",
     "dupl",
     "errcheck",
+    "gocognit",
     "gocritic",
     "gosec",
     "ineffassign",
+    "revive",
     "testifylint",
     "testpackage",
-    "wsl_v5",
     "usetesting",
-    "revive",
+    "wsl_v5",
+    "importas",
 ]
 DEFAULT_FORMATTERS = [
     "gofumpt",
@@ -72,12 +76,20 @@ linters:
 {disable_yaml}
 """
     content += f"""  settings:
+    cyclop:
+      max-complexity: 50
+    gocognit:
+      min-complexity: 80
     revive:
       rules:
         - name: package-comments
           disabled: true
         - name: redundant-import-alias
           disabled: false
+    usetesting:
+      context-background: true
+    importas:
+      no-extra-aliases: true
   exclusions:
     generated: lax
     presets:
@@ -105,12 +117,11 @@ def write_makefile():
     content = r""".PHONY: fmt lint
 
 fmt:
-	goimports -w .
-	go fix
 	golangci-lint run --fix
 
 lint:
 	golangci-lint run
+	gitleaks detect
 """
     with open("Makefile", "w") as f:
         f.write(content)
@@ -164,6 +175,12 @@ func TestCalculateTotal(t *testing.T) {
     print("Created AGENTS.md")
 
 
+def write_testing_md():
+    template_path = Path(__file__).resolve().parent.parent / "TESTING.md"
+    shutil.copyfile(template_path, "TESTING.md")
+    print("Created TESTING.md")
+
+
 def main():
     preset = "standard"
     if len(sys.argv) > 1:
@@ -179,8 +196,9 @@ def main():
     write_golangci_yml(preset)
     write_makefile()
     write_agents_md()
+    write_testing_md()
     print(
-        "\nSetup complete! Run 'make fmt' to modernize your project and 'make lint' to check it."
+        "\nSetup complete! Run 'make fmt' to format your project and 'make lint' to check it."
     )
 
 

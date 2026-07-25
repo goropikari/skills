@@ -7,7 +7,7 @@ description: >-
 
 # Go Project Setup Skill
 
-このスキルは、Go プロジェクトに `golangci-lint` の設定ファイルと、コードの近代化およびフォーマットを自動化する `Makefile` を導入します。
+このスキルは、Go プロジェクトに `golangci-lint` の設定ファイルと、コードのフォーマットを自動化する `Makefile` を導入します。
 
 ## 使い方
 
@@ -28,19 +28,22 @@ description: >-
 ## 生成される成果物
 
 - `.golangci.yml`: 選択したプリセットに基づいた `golangci-lint` v2 形式の linter 設定ファイル。
-  - `linters.default` は `standard` を基準にし、標準 preset では `asciicheck`, `bodyclose`, `cyclop`, `dupl`, `errcheck`, `gocritic`, `gosec`, `ineffassign`, `testifylint`, `testpackage`, `wsl_v5`, `usetesting`, `revive` を有効化します。
+  - `linters.default` は `standard` を基準にし、標準 preset では `asciicheck`, `bodyclose`, `cyclop`, `dupl`, `errcheck`, `gocognit`, `gocritic`, `gosec`, `ineffassign`, `revive`, `testifylint`, `testpackage`, `usetesting`, `wsl_v5`, `importas` を有効化します。
+  - `cyclop` の最大複雑度は 50、`gocognit` の最小複雑度は 80 とし、`usetesting.context-background` と `importas.no-extra-aliases` を有効化します。
   - `basic` は一部の標準 linter を外し、`strict` は追加 linter を有効化します。
   - formatter は `gofumpt` と `goimports` を有効化します。
 - `Makefile`: `make fmt` と `make lint` コマンドを提供します。
-  - `make fmt` は `go fix` と `golangci-lint run --fix` を順番に実行します。
-  - `make lint` は `golangci-lint run` を実行します。
+  - `make fmt` は `golangci-lint run --fix` を実行します。
+  - `make lint` は `golangci-lint run` と `gitleaks detect` を実行します。
 - `AGENTS.md`: 開発時のテストガイドラインを提供します。
   - AAA pattern（Arrange・Act・Assert）でテストを構成します。
   - アサーションには `github.com/stretchr/testify` を使います。
   - テスト関数名にはテスト対象の関数名を含めます。
   - 複数ケースのテストには `t.Run` を使い、その説明に前提条件と期待値を書きます。
+- `TESTING.md`: テスト戦略、テストの構成、失敗系・境界値、並行性、実行前チェックのガイドラインを提供します。
 
 ## 前提条件
 
 - `go` ツールチェーンがインストールされていること。
 - `golangci-lint` がインストールされていること。
+- `gitleaks` がインストールされていること。
