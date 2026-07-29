@@ -35,6 +35,7 @@ Codex と Claude Code のどちらで実行しても、同じ対象プロジェ�
 - 状態管理と設計成果物は、現在開いている作業ディレクトリ直下の `.dev-workflow-phase/` に保存されます。
 - Codex と Claude Code を併用する場合、必ず同じ対象プロジェクトのルートでコマンドを実行してください。異なるディレクトリで実行すると、それぞれ別の `.dev-workflow-phase/` が作られます。
 - `CURRENT_STEP.md` に記載されている現在のステップ、現在の phase パス、Phase Type、Local Step、制約を厳守し、指示されたステップ以外の開発を行わないでください。
+- `CURRENT_STEP.md` の `Phase Final Step: yes` は、その phase の最後の処理を示します。作業完了後にレビュー・承認を経て `$dw-phase next` を実行すると、次の phase へ進むか、全体を完了します。
 - 全体ステップは次の 2 つです。
   - `0. プロジェクト全体の要件定義`: `.dev-workflow-phase/00_project_requirements.md`
   - `1. フェーズ設計`: `.dev-workflow-phase/01_phase_design.md`

@@ -177,6 +177,7 @@ def test_manual_verification_skips_automated_test_step(tmp_path, monkeypatch):
     content = current_state(tmp_path)
     assert "- **Local Step**: 6" in content
     assert "- **Local Stage**: implementation" in content
+    assert "- **Phase Final Step**: yes" in content
 
 
 def test_split_yes_enters_subphase_and_completes_parent_depth_first(

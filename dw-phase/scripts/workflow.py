@@ -160,6 +160,7 @@ def read_state(base_dir: Path) -> WorkflowState:
 def write_state(base_dir: Path, state: WorkflowState) -> None:
     path = state_path(base_dir)
     step = current_step_info(state)
+    phase_final_step = "yes" if state.local_stage == "implementation" else "no"
     content = f"""# DW Phase Workflow State
 
 - **Global Step**: {state.global_step if state.global_step is not None else ""}
@@ -168,6 +169,7 @@ def write_state(base_dir: Path, state: WorkflowState) -> None:
 - **Phase Type**: {state.phase_type}
 - **Local Step**: {state.local_step}
 - **Local Stage**: {state.local_stage}
+- **Phase Final Step**: {phase_final_step}
 - **Step Name**: {step.name}
 - **Target**: {step.target}
 - **Status**: {state.status}
@@ -249,9 +251,9 @@ def current_step_info(state: WorkflowState) -> StepInfo:
         )
     if state.local_stage == "implementation":
         return StepInfo(
-            f"{prefix}内部ロジック実装",
+            f"{prefix}内部ロジック実装（phase 最終処理）",
             "実プロジェクト内の適切なソースファイル",
-            "末端 phase として、内部ロジックを実装し、対象テストをパスさせる。",
+            "末端 phase の最後の処理として内部ロジックを実装し、自動テストまたは設計した手動確認を完了させる。完了後、この phase は完了扱いになる。",
         )
     return StepInfo("完了", STATE_DIR, "すべてのステップが完了しています。")
 
