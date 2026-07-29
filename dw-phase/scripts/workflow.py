@@ -118,6 +118,13 @@ def parse_split_from_text(text: str) -> str | None:
     return value
 
 
+def parse_verification_from_text(text: str) -> str | None:
+    value = parse_metadata(text, "Verification")
+    if value not in {"automated", "manual"}:
+        return None
+    return value
+
+
 def read_state(base_dir: Path) -> WorkflowState:
     path = state_path(base_dir)
     if not path.exists():
@@ -220,7 +227,7 @@ def current_step_info(state: WorkflowState) -> StepInfo:
         return StepInfo(
             f"{prefix}テスト分析・設計",
             f"{path}/03_test_design.md",
-            "テスト観点、条件、ケース、境界値、リスクを設計し、Split yes/no を判断する。",
+            "検証観点、条件、ケース、境界値、リスクを設計し、自動テストか手動確認か、Split yes/no を判断する。",
         )
     if state.local_stage == "split-design":
         return StepInfo(
@@ -279,8 +286,11 @@ def step_notes(state: WorkflowState) -> str:
 """
     if state.local_stage == "test-design":
         return """## 進め方
-- `01_definition.md` と step 2 の成果物を読み、テスト観点、条件、ケース、境界値、リスクを設計する。
+- `01_definition.md` と step 2 の成果物を読み、検証観点、条件、ケース、境界値、リスクを設計する。
 - 必須メタデータ `- **Split**: yes|no` を書く。
+- 必須メタデータ `- **Verification**: automated|manual` を書く。
+- 通常の機能・ロジック・契約変更は `automated` を選ぶ。
+- migration、設定、ドキュメント、既存の手順で再現性のある確認ができる変更など、自動テストの費用対効果が低い場合は `manual` を選べる。その場合は、実行手順、確認対象、期待結果、失敗時の切り戻しまたは対処を設計書に明記する。
 - `yes` の場合は分割理由と分割観点を明記する。子 phase の詳細は次の `04_split_design.md` に書く。
 """
     if state.local_stage == "split-design":
@@ -526,6 +536,15 @@ def transition_from_reviewed(base_dir: Path, state: WorkflowState) -> int:
                 state,
                 base_dir,
             )
+        verification = parse_verification_from_text(
+            test_design_path(base_dir, state).read_text(encoding="utf-8")
+        )
+        if verification is None:
+            return invalid(
+                "`03_test_design.md` に `- **Verification**: automated|manual` が必要です。",
+                state,
+                base_dir,
+            )
         local_stage = "split-design" if split == "yes" else "interface"
         new_state = WorkflowState(
             status="IN_PROGRESS",
@@ -555,6 +574,27 @@ def transition_from_reviewed(base_dir: Path, state: WorkflowState) -> int:
         return 0
 
     if state.local_stage == "interface":
+        verification = parse_verification_from_text(
+            test_design_path(base_dir, state).read_text(encoding="utf-8")
+        )
+        if verification is None:
+            return invalid(
+                "`03_test_design.md` に `- **Verification**: automated|manual` が必要です。",
+                state,
+                base_dir,
+            )
+        if verification == "manual":
+            new_state = WorkflowState(
+                status="IN_PROGRESS",
+                current_path=state.current_path,
+                current_name=state.current_name,
+                phase_type=state.phase_type,
+                local_step=6,
+                local_stage="implementation",
+            )
+            write_state(base_dir, new_state)
+            print_transition(state, new_state)
+            return 0
         new_state = WorkflowState(
             status="IN_PROGRESS",
             current_path=state.current_path,
@@ -630,7 +670,9 @@ def print_agent_instruction(
             "6. 定義ファイルには `- **Phase Type**: feature|layer` を記載してください。"
         )
     if state.local_stage == "test-design":
-        print("6. テスト設計には `- **Split**: yes|no` を記載してください。")
+        print(
+            "6. テスト設計には `- **Split**: yes|no` と `- **Verification**: automated|manual` を記載してください。"
+        )
     if state.local_stage == "split-design":
         print(
             "6. 分割設計には `- **Subphases**: N` と各 Subphase の `- **Phase Type**: feature|layer` を記載してください。"

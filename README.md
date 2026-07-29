@@ -7,42 +7,42 @@ Codex と Claude Code で使える Agent Skill のコレクションです。
 
 ### 開発フロー
 
-| Skill | 用途 |
-| --- | --- |
-| [`dw`](dw/) | 要件定義、Gherkin、テスト設計、実装を 6 ステップで進める基本フロー |
-| [`dw-layer`](dw-layer/) | 全体要件とレイヤー設計の後、レイヤー単位で開発するフロー |
-| [`dw-phase`](dw-phase/) | phase/subphase ツリーを使って機能・レイヤーを段階的に開発するフロー |
-| [`dw-phase-light`](dw-phase-light/) | phase 完了時だけ人間レビューを挟む軽量版フロー |
-| [`grill-me`](grill-me/) | 計画や設計を一問ずつ掘り下げ、共通理解を作るインタビュー |
-| [`prd-maker`](prd-maker/) | 曖昧なアイデアから日本語の PRD を作成するインタビュー |
-| [`prd-to-issue`](prd-to-issue/) | 完成した PRD を GitHub issue に変換する |
-| [`go-setup`](go-setup/) | 新規 Go プロジェクトに formatter/linter 設定を導入する |
+| Skill                               | 用途                                                                |
+| ----------------------------------- | ------------------------------------------------------------------- |
+| [`dw`](dw/)                         | 要件定義、Gherkin、テスト設計、実装を 6 ステップで進める基本フロー  |
+| [`dw-layer`](dw-layer/)             | 全体要件とレイヤー設計の後、レイヤー単位で開発するフロー            |
+| [`dw-phase`](dw-phase/)             | phase/subphase ツリーを使って機能・レイヤーを段階的に開発するフロー |
+| [`dw-phase-light`](dw-phase-light/) | phase 完了時だけ人間レビューを挟む軽量版フロー                      |
+| [`grill-me`](grill-me/)             | 計画や設計を一問ずつ掘り下げ、共通理解を作るインタビュー            |
+| [`prd-maker`](prd-maker/)           | 曖昧なアイデアから日本語の PRD を作成するインタビュー               |
+| [`prd-to-issue`](prd-to-issue/)     | 完成した PRD を GitHub issue に変換する                             |
+| [`go-setup`](go-setup/)             | 新規 Go プロジェクトに formatter/linter 設定を導入する              |
 
 ### コードレビュー
 
-| Skill | 用途 |
-| --- | --- |
-| [`review-orchestrator`](review-orchestrator/) | 変更内容に応じて必要なレビュー skill を選定・実行する |
-| [`api-compatibility-review`](api-compatibility-review/) | API、CLI、設定、schema などの後方互換性を確認する |
-| [`change-impact-review`](change-impact-review/) | 変更が呼び出し元、データ、運用へ与える影響を追跡する |
-| [`security-review`](security-review/) | 認証・認可、入力、秘密情報、プライバシー、悪用経路を確認する |
-| [`data-integrity-review`](data-integrity-review/) | DB、migration、永続化、復旧時のデータ整合性を確認する |
-| [`concurrency-review`](concurrency-review/) | race、deadlock、leak、cancel、shutdown の問題を確認する |
-| [`observability-review`](observability-review/) | ログ、metrics、trace、health check、障害切り分けを確認する |
-| [`release-readiness-review`](release-readiness-review/) | deploy、rollback、migration、監視、復旧の準備状況を確認する |
-| [`test-quality-review`](test-quality-review/) | テストの検出力、脆さ、flakiness、順序依存を確認する |
-| [`ta-review`](ta-review/) | テスト分析の観点から要件、受け入れ条件、ユーザー価値を確認する |
-| [`tta-review`](tta-review/) | 技術テスト分析の観点からテスト容易性と非機能リスクを確認する |
-| [`jr`](jr/) | 可読性、理解しやすさ、テスト容易性、疎結合を確認する |
-| [`code-smell-review`](code-smell-review/) | 設計、責務、結合、変更容易性などのコードスメルを確認する |
-| [`code-comment-review`](code-comment-review/) | コメント、docstring、TODO の正確性と保守性を確認する |
-| [`comment-contract-reviewer`](comment-contract-reviewer/) | コメントが公開契約だけを説明しているか確認する |
-| [`comment-review-orchestrator`](comment-review-orchestrator/) | コメントレビューを言語別 reviewer と連携して統合する |
-| [`golang-godoc-reviewer`](golang-godoc-reviewer/) | GoDoc と Effective Go の規約を確認する |
-| [`gocomment-contract-review`](gocomment-contract-review/) | git diff の Go コメントを抽出して契約レビューする |
-| [`review-finding-validator`](review-finding-validator/) | 既存のレビュー指摘をソース、テスト、仕様に照らして検証する |
-| [`review-calibration`](review-calibration/) | 複数 reviewer の指摘を重複排除・統合する |
-| [`coderabbit-review`](coderabbit-review/) | CodeRabbit のレビューを複数回実行し、指摘の安定性を評価する |
+| Skill                                                         | 用途                                                           |
+| ------------------------------------------------------------- | -------------------------------------------------------------- |
+| [`review-orchestrator`](review-orchestrator/)                 | 変更内容に応じて必要なレビュー skill を選定・実行する          |
+| [`api-compatibility-review`](api-compatibility-review/)       | API、CLI、設定、schema などの後方互換性を確認する              |
+| [`change-impact-review`](change-impact-review/)               | 変更が呼び出し元、データ、運用へ与える影響を追跡する           |
+| [`security-review`](security-review/)                         | 認証・認可、入力、秘密情報、プライバシー、悪用経路を確認する   |
+| [`data-integrity-review`](data-integrity-review/)             | DB、migration、永続化、復旧時のデータ整合性を確認する          |
+| [`concurrency-review`](concurrency-review/)                   | race、deadlock、leak、cancel、shutdown の問題を確認する        |
+| [`observability-review`](observability-review/)               | ログ、metrics、trace、health check、障害切り分けを確認する     |
+| [`release-readiness-review`](release-readiness-review/)       | deploy、rollback、migration、監視、復旧の準備状況を確認する    |
+| [`test-quality-review`](test-quality-review/)                 | テストの検出力、脆さ、flakiness、順序依存を確認する            |
+| [`ta-review`](ta-review/)                                     | テスト分析の観点から要件、受け入れ条件、ユーザー価値を確認する |
+| [`tta-review`](tta-review/)                                   | 技術テスト分析の観点からテスト容易性と非機能リスクを確認する   |
+| [`jr`](jr/)                                                   | 可読性、理解しやすさ、テスト容易性、疎結合を確認する           |
+| [`code-smell-review`](code-smell-review/)                     | 設計、責務、結合、変更容易性などのコードスメルを確認する       |
+| [`code-comment-review`](code-comment-review/)                 | コメント、docstring、TODO の正確性と保守性を確認する           |
+| [`comment-contract-reviewer`](comment-contract-reviewer/)     | コメントが公開契約だけを説明しているか確認する                 |
+| [`comment-review-orchestrator`](comment-review-orchestrator/) | コメントレビューを言語別 reviewer と連携して統合する           |
+| [`golang-godoc-reviewer`](golang-godoc-reviewer/)             | GoDoc と Effective Go の規約を確認する                         |
+| [`gocomment-contract-review`](gocomment-contract-review/)     | git diff の Go コメントを抽出して契約レビューする              |
+| [`review-finding-validator`](review-finding-validator/)       | 既存のレビュー指摘をソース、テスト、仕様に照らして検証する     |
+| [`review-calibration`](review-calibration/)                   | 複数 reviewer の指摘を重複排除・統合する                       |
+| [`coderabbit-review`](coderabbit-review/)                     | CodeRabbit のレビューを複数回実行し、指摘の安定性を評価する    |
 
 各 skill の詳細な発動条件、制約、成果物は、それぞれの `SKILL.md` を参照してください。
 

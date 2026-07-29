@@ -56,10 +56,11 @@ Codex と Claude Code のどちらで実行しても、同じ対象プロジェ�
   - `04_interface` 相当のインターフェース/スタブ作成
   - `05_tests` 相当のテスト実装
   - `06_implementation` 相当の内部ロジック実装
-- `03_test_design.md` には必ず `- **Split**: yes|no` を記載してください。
+- `03_test_design.md` には必ず `- **Split**: yes|no` と `- **Verification**: automated|manual` を記載してください。
+- `Verification: automated` の場合は末端 phase を `interface → tests → implementation` の順に進めます。`Verification: manual` の場合は `interface → implementation` とし、自動テスト実装 step をスキップします。manual を選ぶ場合は、手動確認の手順、確認対象、期待結果、失敗時の対処を `03_test_design.md` に明記してください。
 - `Split: yes` の場合、`03_test_design.md` 承認後の `$dw-phase next` は同じ phase/subphase 直下の `.dev-workflow-phase/<phase-path>/04_split_design.md` 作成 step に進みます。
 - `04_split_design.md` には必ず `- **Subphases**: N` を記載し、`## Subphase N: 名前` を N 個記載し、各セクションに `- **Phase Type**: feature|layer` を記載してください。
-- `Split: no` の場合のみ、その phase/subphase を末端 phase として関数定義・コメント作成、テスト実装、内部ロジック実装へ進めます。
+- `Split: no` の場合のみ、その phase/subphase を末端 phase として関数定義・コメント作成へ進めます。`Verification: automated` なら続けてテスト実装、`manual` なら自動テスト実装をスキップして内部ロジック実装へ進めます。
 - 子 phase は分割設計書の記載順に深さ優先で進みます。子 phase 群がすべて完了したら親 phase は自動的に完了扱いになります。
 - 全トップレベル phase が完了したらワークフロー全体も `COMPLETED` になります。
 - 各ステップの作業が完了したら、生成・更新した成果物のパスと内容または要約をユーザーに出力し、その後 AI 自身で `python3 "<このスキルディレクトリ>/scripts/workflow.py" review` を実行してレビュー待ち状態にしてください。

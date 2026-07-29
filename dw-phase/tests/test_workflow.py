@@ -129,7 +129,9 @@ def test_test_design_split_no_advances_to_leaf_implementation_steps(
     )
     test_design = tmp_path / ".dev-workflow-phase" / "phase1" / "03_test_design.md"
     test_design.parent.mkdir(parents=True)
-    test_design.write_text("- **Split**: no\n", encoding="utf-8")
+    test_design.write_text(
+        "- **Split**: no\n- **Verification**: automated\n", encoding="utf-8"
+    )
 
     assert run_command(monkeypatch, "next") == 0
     assert "- **Local Stage**: interface" in current_state(tmp_path)
@@ -139,6 +141,42 @@ def test_test_design_split_no_advances_to_leaf_implementation_steps(
 
     approve_and_next(monkeypatch)
     assert "- **Local Stage**: implementation" in current_state(tmp_path)
+
+
+def test_manual_verification_skips_automated_test_step(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    workflow.init_environment(tmp_path)
+    workflow.write_state(
+        tmp_path,
+        workflow.WorkflowState(
+            status="REVIEWED",
+            current_path="phase1",
+            current_name="Migration",
+            phase_type="layer",
+            local_step=3,
+            local_stage="test-design",
+        ),
+    )
+    test_design = tmp_path / ".dev-workflow-phase" / "phase1" / "03_test_design.md"
+    test_design.parent.mkdir(parents=True)
+    test_design.write_text(
+        """- **Split**: no
+- **Verification**: manual
+
+## Manual verification
+- Apply the migration to a disposable database.
+- Confirm the schema and rollback result.
+""",
+        encoding="utf-8",
+    )
+
+    assert run_command(monkeypatch, "next") == 0
+    assert "- **Local Stage**: interface" in current_state(tmp_path)
+
+    approve_and_next(monkeypatch)
+    content = current_state(tmp_path)
+    assert "- **Local Step**: 6" in content
+    assert "- **Local Stage**: implementation" in content
 
 
 def test_split_yes_enters_subphase_and_completes_parent_depth_first(
@@ -171,7 +209,9 @@ def test_split_yes_enters_subphase_and_completes_parent_depth_first(
     )
     test_design = tmp_path / ".dev-workflow-phase" / "phase1" / "03_test_design.md"
     test_design.parent.mkdir(parents=True)
-    test_design.write_text("- **Split**: yes\n", encoding="utf-8")
+    test_design.write_text(
+        "- **Split**: yes\n- **Verification**: automated\n", encoding="utf-8"
+    )
 
     assert run_command(monkeypatch, "next") == 0
     assert "- **Local Stage**: split-design" in current_state(tmp_path)
