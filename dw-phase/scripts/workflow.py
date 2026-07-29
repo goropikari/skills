@@ -52,6 +52,7 @@ class ChildPhase:
     phase_type: str
     status: str
     path: str
+    depends_on: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -109,6 +110,23 @@ def parse_phase_type_from_text(text: str) -> str | None:
     if value not in PHASE_TYPES:
         return None
     return value
+
+
+def parse_depends_on_from_text(
+    text: str, *, required: bool = False
+) -> tuple[int, ...] | None:
+    value = parse_metadata(text, "Depends On")
+    if value is None:
+        return None if required else ()
+    if value.lower() == "none":
+        return ()
+    parts = [part.strip() for part in value.split(",")]
+    if not parts or any(not re.fullmatch(r"phase\d+", part) for part in parts):
+        return None
+    numbers = tuple(int(part.removeprefix("phase")) for part in parts)
+    if len(set(numbers)) != len(numbers) or any(number < 1 for number in numbers):
+        return None
+    return numbers
 
 
 def parse_split_from_text(text: str) -> str | None:
@@ -339,9 +357,39 @@ def parse_children_from_text(text: str, parent_path: str) -> list[ChildPhase] | 
         phase_type = parse_phase_type_from_text(body)
         if phase_type is None:
             return None
+        # Older phase design documents may omit Depends On; absence means no dependencies.
+        depends_on = parse_depends_on_from_text(body, required=False)
+        if depends_on is None:
+            return None
         status = parse_metadata(body, "Status") or "NOT_STARTED"
         path = f"{parent_path}/subphase{number}" if parent_path else f"phase{number}"
-        children.append(ChildPhase(number, name, phase_type, status, path))
+        children.append(ChildPhase(number, name, phase_type, status, path, depends_on))
+    if not parent_path:
+        valid_numbers = {child.number for child in children}
+        graph = {child.number: child.depends_on for child in children}
+        if any(
+            number not in valid_numbers or number == child.number
+            for child in children
+            for number in child.depends_on
+        ):
+            return None
+        visiting: set[int] = set()
+        visited: set[int] = set()
+
+        def visit(number: int) -> bool:
+            if number in visiting:
+                return False
+            if number in visited:
+                return True
+            visiting.add(number)
+            if any(not visit(dependency) for dependency in graph[number]):
+                return False
+            visiting.remove(number)
+            visited.add(number)
+            return True
+
+        if any(not visit(number) for number in graph):
+            return None
     return children
 
 
@@ -482,7 +530,7 @@ def transition_from_reviewed(base_dir: Path, state: WorkflowState) -> int:
         children = read_children(base_dir, "")
         if children is None:
             return invalid(
-                f"`{STATE_DIR}/01_phase_design.md` に有効な `- **Phases**: N` と各 Phase の `- **Phase Type**: feature|layer` が必要です。",
+                f"`{STATE_DIR}/01_phase_design.md` に有効な `- **Phases**: N`、各 Phase の `- **Phase Type**: feature|layer`、`- **Depends On**: none|phaseN` と循環しない依存関係が必要です。",
                 state,
                 base_dir,
             )
@@ -665,7 +713,7 @@ def print_agent_instruction(
     )
     if state.global_step == 1:
         print(
-            f"6. フェーズ設計書には `- **Phases**: N` と各 Phase の `- **Phase Type**: feature|layer` を記載してください。"
+            f"6. フェーズ設計書には `- **Phases**: N`、各 Phase の `- **Phase Type**: feature|layer`、`- **Depends On**: none|phaseN` を記載してください。"
         )
     if state.local_stage == "definition":
         print(

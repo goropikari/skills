@@ -41,6 +41,8 @@ Codex と Claude Code のどちらで実行しても、同じ対象プロジェ�
   - `1. フェーズ設計`: `.dev-workflow-phase/01_phase_design.md`
 - フェーズ設計書には必ず `- **Phases**: N` を記載してください。`N` は 1 以上 20 以下の整数です。
 - フェーズ設計書には `## Phase N: 名前` を N 個記載し、各セクションに必ず `- **Phase Type**: feature|layer` を記載してください。
+- 各トップレベル phase セクションには `- **Depends On**: none|phaseN[, phaseN...]` を記載してください。新規設計書では必須です。既存設計書の未指定は `none` として後方互換に扱います。
+- `Depends On` は存在しない phase、自己依存、循環依存を許可しません。`$dw-phase next` で検証に失敗した場合は phase 設計から進みません。
 - ステップ 1 が `REVIEWED` の状態で `$dw-phase next` を実行すると、フェーズ設計書からトップレベル phase を読み取り、記載順に深さ優先で進行します。不正な場合はステップ 1 から進みません。
 - 各 phase/subphase は最初に `.dev-workflow-phase/<phase-path>/01_definition.md` を作成します。このファイルにも必ず `- **Phase Type**: feature|layer` を記載してください。承認後、以後の step 構成を Phase Type で確定します。
 - `feature` phase は次の順に進めます。

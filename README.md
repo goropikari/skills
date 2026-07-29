@@ -7,16 +7,18 @@ Codex と Claude Code で使える Agent Skill のコレクションです。
 
 ### 開発フロー
 
-| Skill                               | 用途                                                                |
-| ----------------------------------- | ------------------------------------------------------------------- |
-| [`dw`](dw/)                         | 要件定義、Gherkin、テスト設計、実装を 6 ステップで進める基本フロー  |
-| [`dw-layer`](dw-layer/)             | 全体要件とレイヤー設計の後、レイヤー単位で開発するフロー            |
-| [`dw-phase`](dw-phase/)             | phase/subphase ツリーを使って機能・レイヤーを段階的に開発するフロー |
-| [`dw-phase-light`](dw-phase-light/) | phase 完了時だけ人間レビューを挟む軽量版フロー                      |
-| [`grill-me`](grill-me/)             | 計画や設計を一問ずつ掘り下げ、共通理解を作るインタビュー            |
-| [`prd-maker`](prd-maker/)           | 曖昧なアイデアから日本語の PRD を作成するインタビュー               |
-| [`prd-to-issue`](prd-to-issue/)     | 完成した PRD を GitHub issue に変換する                             |
-| [`go-setup`](go-setup/)             | 新規 Go プロジェクトに formatter/linter 設定を導入する              |
+| Skill                                                 | 用途                                                                |
+| ----------------------------------------------------- | ------------------------------------------------------------------- |
+| [`dw`](dw/)                                           | 要件定義、Gherkin、テスト設計、実装を 6 ステップで進める基本フロー  |
+| [`dw-layer`](dw-layer/)                               | 全体要件とレイヤー設計の後、レイヤー単位で開発するフロー            |
+| [`dw-phase`](dw-phase/)                               | phase/subphase ツリーを使って機能・レイヤーを段階的に開発するフロー |
+| [`dw-phase-light`](dw-phase-light/)                   | phase 完了時だけ人間レビューを挟む軽量版フロー                      |
+| [`dw-phase-parallel`](dw-phase-parallel/)             | 依存関係のない phase を並列実装し、各ステップでレビューするフロー   |
+| [`dw-phase-parallel-light`](dw-phase-parallel-light/) | phase を一括実装する並列フロー                                      |
+| [`grill-me`](grill-me/)                               | 計画や設計を一問ずつ掘り下げ、共通理解を作るインタビュー            |
+| [`prd-maker`](prd-maker/)                             | 曖昧なアイデアから日本語の PRD を作成するインタビュー               |
+| [`prd-to-issue`](prd-to-issue/)                       | 完成した PRD を GitHub issue に変換する                             |
+| [`go-setup`](go-setup/)                               | 新規 Go プロジェクトに formatter/linter 設定を導入する              |
 
 ### コードレビュー
 
@@ -72,6 +74,19 @@ $dw next
 $dw review
 $dw approve
 ```
+
+`dw-phase` の Global Step 1（phase 設計）がレビュー済みになった後は、phase 単位の並列実装も選択できます。
+
+```text
+$dw-phase-parallel
+$dw-phase-parallel next --agent-cmd 'codex exec --full-auto'
+$dw-phase-parallel status
+
+# 途中レビューを省略して一括実装へ切り替える場合
+$dw-phase-parallel switch light
+```
+
+`dw-phase-parallel-light` は phase ごとに自己レビューとテストまで一括実行します。どちらの skill も agent に commit/push/PR 作成をさせず、ユーザーが Git 操作を行った後に `status` で状態を同期します。
 
 レビューを実行する場合は、目的に合う skill を指定します。
 

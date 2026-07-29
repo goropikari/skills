@@ -1,0 +1,45 @@
+from pathlib import Path
+import sys
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "dw-phase-parallel" / "scripts"))
+import common
+
+
+def write_design(tmp_path: Path, body: str) -> None:
+    design = tmp_path / ".dev-workflow-phase"
+    design.mkdir()
+    (design / "01_phase_design.md").write_text(body, encoding="utf-8")
+
+
+def test_load_design_reads_dependencies(tmp_path: Path) -> None:
+    write_design(
+        tmp_path,
+        """- **Phases**: 2
+
+## Phase 1: Base
+- **Phase Type**: layer
+- **Depends On**: none
+
+## Phase 2: Feature
+- **Phase Type**: feature
+- **Depends On**: phase1
+""",
+    )
+    phases = common.load_design(tmp_path)
+    assert phases[1]["depends_on"] == ["phase1"]
+
+
+def test_load_design_rejects_unknown_dependency(tmp_path: Path) -> None:
+    write_design(
+        tmp_path,
+        """- **Phases**: 1
+
+## Phase 1: Base
+- **Phase Type**: layer
+- **Depends On**: phase2
+""",
+    )
+    with pytest.raises(ValueError):
+        common.load_design(tmp_path)
