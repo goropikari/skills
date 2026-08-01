@@ -43,3 +43,21 @@ def test_load_design_rejects_unknown_dependency(tmp_path: Path) -> None:
     )
     with pytest.raises(ValueError):
         common.load_design(tmp_path)
+
+
+def test_light_defaults_to_native_subagent() -> None:
+    args = type("Args", (), {"agent_cmd": None, "light": True})()
+    assert common.command_from_args(args) == "native-subagent"
+
+
+def test_reviewed_mode_requires_agent_command() -> None:
+    args = type("Args", (), {"agent_cmd": None, "light": False})()
+    assert common.command_from_args(args) == ""
+
+
+def test_phase_worktree_slug_is_ascii(tmp_path: Path) -> None:
+    assert common.phase_slug({"id": "phase1", "name": "日本語 API 実装"}) == "api"
+
+
+def test_phase_worktree_uses_phase_id_for_non_ascii_name(tmp_path: Path) -> None:
+    assert common.phase_slug({"id": "phase2", "name": "日本語のみ"}) == "phase2"

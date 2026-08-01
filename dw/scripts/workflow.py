@@ -203,39 +203,6 @@ def init_environment(base_dir):
     for subdir in subdirs:
         os.makedirs(os.path.join(dev_workflow_dir, subdir), exist_ok=True)
 
-    # Handle .gitignore
-    gitignore_path = os.path.join(base_dir, ".gitignore")
-    ignore_entry = ".dev-workflow/"
-
-    needs_append = True
-    if os.path.exists(gitignore_path):
-        with open(gitignore_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-        for line in lines:
-            stripped = line.strip()
-            if stripped == ignore_entry or stripped == ".dev-workflow":
-                needs_append = False
-                break
-
-    if needs_append:
-        has_newline = True
-        if os.path.exists(gitignore_path) and os.path.getsize(gitignore_path) > 0:
-            try:
-                with open(gitignore_path, "r", encoding="utf-8") as f:
-                    f.seek(0, os.SEEK_END)
-                    pos = max(0, f.tell() - 1)
-                    f.seek(pos)
-                    last_char = f.read(1)
-                    has_newline = last_char == "\n"
-            except Exception:
-                has_newline = True
-
-        with open(gitignore_path, "a", encoding="utf-8") as f:
-            if not has_newline:
-                f.write("\n")
-            f.write(f"{ignore_entry}\n")
-
-
 def read_status(base_dir):
     current_step_path = os.path.join(base_dir, ".dev-workflow", "CURRENT_STEP.md")
     if not os.path.exists(current_step_path):

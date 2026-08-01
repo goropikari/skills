@@ -9,6 +9,7 @@ import shlex
 import subprocess
 import sys
 import time
+import re
 from pathlib import Path
 
 STATE_DIR = ".dev-workflow-phase-parallel"
@@ -83,7 +84,11 @@ def init(root: Path, mode: str, max_parallel: int) -> dict:
 
 
 def command_from_args(args: argparse.Namespace) -> str:
-    return args.agent_cmd or os.environ.get("DW_PHASE_PARALLEL_AGENT_CMD", "")
+    configured = args.agent_cmd or os.environ.get("DW_PHASE_PARALLEL_AGENT_CMD", "")
+    # Native subagents are owned by the calling Codex session; they cannot be
+    # started from a shell command. Light mode uses request files for this
+    # backend so it never falls back to `codex exec`.
+    return configured or ("native-subagent" if args.light else "")
 
 
 def ready_phases(state: dict) -> list[dict]:
@@ -97,8 +102,14 @@ def ready_phases(state: dict) -> list[dict]:
     return [phase for phase in result if phase["id"] not in active]
 
 
+def phase_slug(phase: dict) -> str:
+    # Keep branch and worktree names portable: phase names may contain
+    # Japanese or other non-ASCII characters, which must not leak into paths.
+    return re.sub(r"[^a-z0-9]+", "-", phase["name"].lower()).strip("-")[:48].strip("-") or phase["id"]
+
+
 def phase_worktree(root: Path, phase: dict) -> tuple[Path, str]:
-    slug = "-".join("".join(char if char.isalnum() else "-" for char in phase["name"].lower()).split())[:48].strip("-") or phase["id"]
+    slug = phase_slug(phase)
     branch = f"phase/{phase['id']}-{slug}"
     path = root / ".worktrees" / "phase" / f"{phase['id']}-{slug}"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -117,9 +128,30 @@ def spawn(root: Path, state: dict, phase: dict, args: argparse.Namespace) -> Non
     command = command_from_args(args)
     if not command:
         raise RuntimeError("--agent-cmd または DW_PHASE_PARALLEL_AGENT_CMD が必要です")
+    if args.light and "codex exec" in command:
+        raise RuntimeError("light mode は codex exec を起動しません。native subagent を使用してください")
     log = root / STATE_DIR / "logs" / f"{phase['id']}-{int(time.time())}.log"
     exit_file = root / STATE_DIR / "logs" / f"{phase['id']}-{int(time.time())}.exit"
     log.parent.mkdir(parents=True, exist_ok=True)
+    if command == "native-subagent":
+        request_file = root / STATE_DIR / "requests" / f"{phase['id']}-{int(time.time())}.md"
+        request_file.parent.mkdir(parents=True, exist_ok=True)
+        request_file.write_text(
+            prompt(state, phase, args.light)
+            + f"\n\n親 agent への完了通知: 作業終了時に {exit_file} に `0`（失敗時は `1`）だけを書き込んでください。\n",
+            encoding="utf-8",
+        )
+        phase.update({
+            "status": "RUNNING",
+            "worktree": str(worktree),
+            "branch": branch,
+            "pid": None,
+            "request_file": str(request_file),
+            "completion_file": str(exit_file),
+            "attempts": phase.get("attempts", 0) + 1,
+        })
+        print(f"{phase['id']}: native subagent request -> {request_file} (worktree={worktree})")
+        return
     handle = log.open("w", encoding="utf-8")
     wrapped = f"{shlex.join(shlex.split(command))}; printf '%s' $? > {shlex.quote(str(exit_file))}"
     process = subprocess.Popen(["sh", "-c", wrapped], cwd=worktree, stdin=subprocess.PIPE, stdout=handle, stderr=subprocess.STDOUT, text=True)
@@ -131,9 +163,11 @@ def spawn(root: Path, state: dict, phase: dict, args: argparse.Namespace) -> Non
 def poll(root: Path, state: dict, args: argparse.Namespace) -> None:
     for phase in state["phases"].values():
         pid = phase.get("pid")
-        if phase["status"] != "RUNNING" or not pid:
+        if phase["status"] != "RUNNING":
             continue
-        exit_file = Path(phase.get("exit_file", ""))
+        exit_file = Path(phase.get("exit_file") or phase.get("completion_file", ""))
+        # A native subagent signals completion by writing the same exit marker
+        # used by the shell backend: 0 means success, any other value failure.
         if not exit_file.exists():
             continue
         try:

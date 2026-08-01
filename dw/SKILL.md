@@ -8,6 +8,8 @@ description: >-
 
 # Dev Workflow Skill
 
+`.gitignore` は変更しません。状態ディレクトリの作成・管理だけを行い、ignore 設定が必要な場合もユーザーの明示的な指示なしには追加・更新しないでください。
+
 このスキルは、Git worktree 環境で人間のレビューを挟みながら厳格に段階的開発（6ステップ）を進めるための agent skill です。
 
 ## 使い方 (Usage)

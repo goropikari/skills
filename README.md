@@ -79,7 +79,7 @@ $dw approve
 
 ```text
 $dw-phase-parallel
-$dw-phase-parallel next --agent-cmd 'codex exec --full-auto'
+$dw-phase-parallel next --agent-cmd '<agent command>'
 $dw-phase-parallel status
 
 # 途中レビューを省略して一括実装へ切り替える場合
@@ -87,6 +87,7 @@ $dw-phase-parallel switch light
 ```
 
 `dw-phase-parallel-light` は phase ごとに自己レビューとテストまで一括実行します。どちらの skill も agent に commit/push/PR 作成をさせず、ユーザーが Git 操作を行った後に `status` で状態を同期します。
+`dw-phase-parallel-light` は native subagent を使うため、`codex exec` などの CLI agent command は指定しません。
 
 レビューを実行する場合は、目的に合う skill を指定します。
 

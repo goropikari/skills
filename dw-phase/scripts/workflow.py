@@ -66,19 +66,6 @@ def init_environment(base_dir: Path) -> None:
     workflow_dir = base_dir / STATE_DIR
     workflow_dir.mkdir(exist_ok=True)
 
-    gitignore_path = base_dir / ".gitignore"
-    ignore_entry = f"{STATE_DIR}/"
-    lines = []
-    if gitignore_path.exists():
-        lines = gitignore_path.read_text(encoding="utf-8").splitlines()
-    if ignore_entry not in [line.strip() for line in lines] and STATE_DIR not in [
-        line.strip() for line in lines
-    ]:
-        with gitignore_path.open("a", encoding="utf-8") as f:
-            if gitignore_path.exists() and gitignore_path.stat().st_size > 0:
-                f.write("\n")
-            f.write(f"{ignore_entry}\n")
-
 
 def state_path(base_dir: Path) -> Path:
     return base_dir / STATE_DIR / STATE_FILE

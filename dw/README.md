@@ -11,7 +11,7 @@ Git worktree環境に完全対応しており、状態管理や成果物がプ�
 - **厳格な6ステップ開発の強制**: 各ステップが完了し、人間が次のステップへの進行を許可（Codex では `$dw next`、Claude Code では `/dw next`）するまで、AI agent は次のフェーズのファイル変更・作成を行いません。
 - **要件定義フェーズでの `grill-me` 強制**: ステップ 1 では `grill-me` を使い、AI が推奨回答を添えながら一問ずつ要件を深掘りし、合意内容から要件定義書を作成します。
 - **Git worktree 対応**: 状態管理ファイル（`CURRENT_STEP.md`）および設計成果物は、作業ディレクトリ直下の `.dev-workflow/` 以下に格納されます。関数定義以降は対象プロジェクトの適切な場所へ実装します。
-- **自動 `.gitignore` 設定**: 初回実行時に自動的に `.gitignore` へ `.dev-workflow/` が追加され、開発途中の成果物がGitコミット履歴を汚すのを防ぎます。
+- **Git設定を変更しない**: 初回実行時も `.gitignore` は変更せず、開発状態は `.dev-workflow/` に保存します。
 - **JavaScript 不要の軽量設計**: インターフェース定義に `SKILL.md` を使用し、実際の挙動は Python 3 スクリプト (`scripts/workflow.py`) で動作するため、シンプルかつ拡張が容易です。
 - **Agent Skills 仕様準拠の構成**: 実行コードは `scripts/` ディレクトリ配下の `scripts/workflow.py` として同封します。
 

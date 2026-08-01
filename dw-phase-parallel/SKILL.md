@@ -6,6 +6,8 @@ description: >-
 
 # DW Phase Parallel
 
+`.gitignore` は変更しません。worktree や状態ディレクトリの作成に伴う ignore 設定が必要な場合も、ユーザーの明示的な指示なしには追加・更新しないでください。
+
 `dw-phase` の Global Step 1 が `REVIEWED` になった後に使用する、phase 単位の並列実装オーケストレーターです。`dw-phase` の state は変更せず、`.dev-workflow-phase-parallel/` に独自 state を保存します。
 
 ## Commands

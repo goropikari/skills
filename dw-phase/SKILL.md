@@ -8,6 +8,8 @@ description: >-
 
 # DW Phase Workflow Skill
 
+`.gitignore` は変更しません。状態ディレクトリの作成・管理だけを行い、ignore 設定が必要な場合もユーザーの明示的な指示なしには追加・更新しないでください。
+
 このスキルは、全体要件定義、フェーズ設計、phase/subphase ツリーによる段階的な設計と実装を、人間のレビューを挟みながら進めるための agent skill です。
 
 ## 使い方
