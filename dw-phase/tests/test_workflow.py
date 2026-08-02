@@ -83,6 +83,34 @@ def test_phase_design_advances_to_first_phase_definition(tmp_path, monkeypatch):
 
     design_content = design.read_text(encoding="utf-8")
     assert "- **Status**: IN_PROGRESS" in design_content
+    assert "- **Depends On**: none" in design_content
+
+
+def test_phase_design_dependency_is_preserved(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    workflow.init_environment(tmp_path)
+    assert run_command(monkeypatch) == 0
+    approve_and_next(monkeypatch)
+
+    design = tmp_path / ".dev-workflow-phase" / "01_phase_design.md"
+    design.write_text(
+        """- **Phases**: 2
+
+## Phase 1: Base
+- **Phase Type**: layer
+- **Depends On**: none
+
+## Phase 2: Feature
+- **Phase Type**: feature
+- **Depends On**: phase1
+""",
+        encoding="utf-8",
+    )
+
+    approve_and_next(monkeypatch)
+
+    assert "## Phase 2: Feature" in design.read_text(encoding="utf-8")
+    assert "- **Depends On**: phase1" in design.read_text(encoding="utf-8")
 
 
 def test_definition_phase_type_controls_step_two(tmp_path, monkeypatch):

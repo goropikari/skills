@@ -203,6 +203,7 @@ def init_environment(base_dir):
     for subdir in subdirs:
         os.makedirs(os.path.join(dev_workflow_dir, subdir), exist_ok=True)
 
+
 def read_status(base_dir):
     current_step_path = os.path.join(base_dir, ".dev-workflow", "CURRENT_STEP.md")
     if not os.path.exists(current_step_path):

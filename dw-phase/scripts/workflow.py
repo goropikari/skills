@@ -386,6 +386,35 @@ def children_design_path(base_dir: Path, parent_path: str) -> Path:
     return base_dir / STATE_DIR / parent_path / "04_split_design.md"
 
 
+def ensure_top_level_phase_dependencies(base_dir: Path) -> None:
+    """Add the safe default for omitted top-level phase dependencies."""
+    path = children_design_path(base_dir, "")
+    if not path.exists():
+        return
+
+    text = path.read_text(encoding="utf-8")
+    section_pattern = re.compile(
+        r"(^##\s+Phase\s+\d+:\s*.*?$)([\s\S]*?)(?=^##\s+Phase\s+\d+:|\Z)",
+        re.MULTILINE,
+    )
+
+    def add_default(match: re.Match[str]) -> str:
+        header, body = match.group(1), match.group(2)
+        if parse_metadata(body, "Depends On") is not None:
+            return match.group(0)
+        phase_type = re.search(r"^\s*-\s+\*\*Phase Type\*\*:\s*.*$", body, re.MULTILINE)
+        if phase_type:
+            insert_at = phase_type.end()
+            body = body[:insert_at] + "\n- **Depends On**: none" + body[insert_at:]
+        else:
+            body = "\n- **Depends On**: none" + body
+        return header + body
+
+    normalized = section_pattern.sub(add_default, text)
+    if normalized != text:
+        path.write_text(normalized, encoding="utf-8")
+
+
 def read_children(base_dir: Path, parent_path: str) -> list[ChildPhase] | None:
     path = children_design_path(base_dir, parent_path)
     try:
@@ -514,6 +543,7 @@ def transition_from_reviewed(base_dir: Path, state: WorkflowState) -> int:
         return 0
 
     if state.global_step == 1:
+        ensure_top_level_phase_dependencies(base_dir)
         children = read_children(base_dir, "")
         if children is None:
             return invalid(
@@ -769,6 +799,8 @@ def main() -> int:
     state = read_state(base_dir)
 
     if is_review:
+        if state.global_step == 1:
+            ensure_top_level_phase_dependencies(base_dir)
         new_state = WorkflowState(**{**state.__dict__, "status": "REVIEW_PENDING"})
         write_state(base_dir, new_state)
         print_header(CYAN, "DW-PHASE STATUS UPDATED TO REVIEW_PENDING")
