@@ -1,12 +1,16 @@
-SKILL_DIRS := $(sort $(patsubst %/SKILL.md,%,$(wildcard */SKILL.md)))
+SKILL_DIRS := $(sort $(filter-out deprecated/%,$(patsubst %/SKILL.md,%,$(wildcard */SKILL.md))))
 TARGET_SKILL_ROOTS := $(HOME)/.claude/skills $(HOME)/.agents/skills
 PYTHON_FILES := $(shell git ls-files '*.py')
 
-.PHONY: default install link copy fmt lint
+.PHONY: default install link copy install-hooks fmt lint
 
 default: copy
 
 install: copy
+
+install-hooks:
+	@git config core.hooksPath .githooks
+	@printf 'git hooks enabled from .githooks\n'
 
 link:
 	@set -eu; \

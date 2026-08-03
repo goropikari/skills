@@ -19,6 +19,7 @@ Codex と Claude Code で使える Agent Skill のコレクションです。
 | [`prd-maker`](prd-maker/)                             | 曖昧なアイデアから日本語の PRD を作成するインタビュー               |
 | [`prd-to-issue`](prd-to-issue/)                       | 完成した PRD を GitHub issue に変換する                             |
 | [`go-setup`](go-setup/)                               | 新規 Go プロジェクトに formatter/linter 設定を導入する              |
+| [`session-learning`](session-learning/)               | セッションから再利用可能な教訓を抽出し、改善案をまとめる            |
 
 ### コードレビュー
 
@@ -46,6 +47,21 @@ Codex と Claude Code で使える Agent Skill のコレクションです。
 | [`review-calibration`](review-calibration/)                   | 複数 reviewer の指摘を重複排除・統合する                       |
 | [`coderabbit-review`](coderabbit-review/)                     | CodeRabbit のレビューを複数回実行し、指摘の安定性を評価する    |
 
+### 品質改善
+
+| Skill                                                       | 用途                                                             |
+| ----------------------------------------------------------- | ---------------------------------------------------------------- |
+| [`requirements-review`](requirements-review/)               | 要件の曖昧さ、抜け、矛盾、受け入れ条件の不足を確認する           |
+| [`architecture-review`](architecture-review/)               | 責務、境界、依存方向、変更容易性を確認する                       |
+| [`performance-review`](performance-review/)                 | latency、throughput、メモリ、I/O、DB、スケーラビリティを確認する |
+| [`dependency-review`](dependency-review/)                   | 脆弱性、ライセンス、保守性、供給網リスクを確認する               |
+| [`migration-review`](migration-review/)                     | 移行の互換性、冪等性、段階 rollout、rollback を確認する          |
+| [`property-based-test-review`](property-based-test-review/) | 不変条件、入力空間、組み合わせ、stateful test を確認する         |
+| [`mutation-test-review`](mutation-test-review/)             | テストが現実的なコード変更を検出できるか確認する                 |
+| [`accessibility-review`](accessibility-review/)             | キーボード、支援技術、視覚、入力、motion の障壁を確認する        |
+| [`privacy-review`](privacy-review/)                         | 個人データの収集、利用、保存、共有、削除、漏えいを確認する       |
+| [`incident-readiness-review`](incident-readiness-review/)   | 検知、切り分け、封じ込め、復旧、runbook の準備を確認する         |
+
 各 skill の詳細な発動条件、制約、成果物は、それぞれの `SKILL.md` を参照してください。
 
 ## インストール
@@ -57,6 +73,12 @@ make install
 ```
 
 各 skill が `~/.claude/skills` と `~/.agents/skills` にコピーされます。既存のインストールをシンボリックリンクにしたい場合は、次を使います。
+
+コミット時に `make fmt` を自動実行する場合は、次を一度実行します。フォーマットによる差分が発生したコミットは失敗します。
+
+```bash
+make install-hooks
+```
 
 ```bash
 make link

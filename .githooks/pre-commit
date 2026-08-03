@@ -1,0 +1,18 @@
+#!/bin/sh
+
+set -eu
+
+before_format=$(git diff --binary --no-ext-diff | git hash-object --stdin)
+
+if ! make fmt; then
+    echo "pre-commit: make fmt failed" >&2
+    exit 1
+fi
+
+after_format=$(git diff --binary --no-ext-diff | git hash-object --stdin)
+
+if [ "$before_format" != "$after_format" ]; then
+    echo "pre-commit: make fmt changed files; review and stage the formatting changes before committing" >&2
+    git diff --stat >&2
+    exit 1
+fi
