@@ -77,23 +77,30 @@ Use this compact structure:
 # Session learning
 
 ## Summary
+
 One paragraph describing the durable outcome.
 
 ## Findings
+
 | Priority | Evidence | Reusable lesson | Destination | Confidence |
-| --- | --- | --- | --- | --- |
+| -------- | -------- | --------------- | ----------- | ---------- |
 
 ## Proposed changes
+
 ### path/to/file
+
 ```diff
 ...minimal patch...
 ```
+
 Reason: ...
 
 ## Rejected or deferred
+
 - Candidate and why it is one-off, weakly evidenced, already covered, or better enforced elsewhere.
 
 ## Follow-up validation
+
 - A test, prompt, or future task that would confirm the change works.
 ````
 

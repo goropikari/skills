@@ -2,13 +2,13 @@
 
 Use this when the destination is ambiguous.
 
-| Question | Best destination |
-| --- | --- |
-| Does it govern every task in a repository or directory? | `AGENTS.md` |
-| Does it govern a repeatable task class independent of one repository? | A skill's `SKILL.md` |
-| Is it detailed, conditional, or too large for the skill body? | A skill `references/` file |
-| Can a machine check it reliably? | Test, linter, script, or configuration |
-| Is it unresolved, temporary, or specific to one incident? | Issue, PR, or session notes |
+| Question                                                              | Best destination                       |
+| --------------------------------------------------------------------- | -------------------------------------- |
+| Does it govern every task in a repository or directory?               | `AGENTS.md`                            |
+| Does it govern a repeatable task class independent of one repository? | A skill's `SKILL.md`                   |
+| Is it detailed, conditional, or too large for the skill body?         | A skill `references/` file             |
+| Can a machine check it reliably?                                      | Test, linter, script, or configuration |
+| Is it unresolved, temporary, or specific to one incident?             | Issue, PR, or session notes            |
 
 ## Promotion test
 
