@@ -16,3 +16,18 @@ if [ "$before_format" != "$after_format" ]; then
     git diff --stat >&2
     exit 1
 fi
+
+before_lint=$(git diff --binary --no-ext-diff | git hash-object --stdin)
+
+if ! make lint; then
+    echo "pre-commit: make lint failed" >&2
+    exit 1
+fi
+
+after_lint=$(git diff --binary --no-ext-diff | git hash-object --stdin)
+
+if [ "$before_lint" != "$after_lint" ]; then
+    echo "pre-commit: make lint changed files; review and stage the formatting changes before committing" >&2
+    git diff --stat >&2
+    exit 1
+fi
