@@ -1,0 +1,4 @@
+interface:
+  display_name: "反復マルチエージェント開発"
+  short_description: "3候補を比較し、勝者を起点に2回改善する開発ワークフロー"
+  default_prompt: "Use $iterative-multi-agent-tournament-development to recover failed tournaments, repair the strongest rejected candidate, and repeat improvement rounds with verification."

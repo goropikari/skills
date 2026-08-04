@@ -1,0 +1,4 @@
+interface:
+  display_name: "マルチエージェント開発トーナメント"
+  short_description: "3候補を実装・検証し、証拠で勝者を選ぶ開発ワークフロー"
+  default_prompt: "Use $multi-agent-tournament-development to implement this change with three independent candidates."
