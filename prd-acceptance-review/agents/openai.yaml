@@ -1,0 +1,4 @@
+interface:
+  display_name: "PRD Acceptance Review"
+  short_description: "Verify delivered work against PRD acceptance criteria"
+  default_prompt: "Use $prd-acceptance-review to verify the final deliverable against the PRD acceptance criteria with evidence."
