@@ -1,0 +1,4 @@
+interface:
+  display_name: "Acceptance-Driven App"
+  short_description: "Drive Web/API apps from acceptance tests to PR-ready evidence"
+  default_prompt: "Use $acceptance-driven-app to drive this Web/API application change from acceptance contract through implementation, verification, and PR-ready evidence."

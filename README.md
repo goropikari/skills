@@ -15,6 +15,7 @@ Codex と Claude Code で使える Agent Skill のコレクションです。
 | [`dw-phase-light`](dw-phase-light/)                   | phase 完了時だけ人間レビューを挟む軽量版フロー                      |
 | [`dw-phase-parallel`](dw-phase-parallel/)             | 依存関係のない phase を並列実装し、各ステップでレビューするフロー   |
 | [`dw-phase-parallel-light`](dw-phase-parallel-light/) | phase を一括実装する並列フロー                                      |
+| [`acceptance-driven-app`](acceptance-driven-app/)     | Web/API アプリを受入条件駆動で実装し、PR 証跡まで管理する workflow  |
 | [`grill-me`](grill-me/)                               | 計画や設計を一問ずつ掘り下げ、共通理解を作るインタビュー            |
 | [`prd-maker`](prd-maker/)                             | 曖昧なアイデアから日本語の PRD を作成するインタビュー               |
 | [`prd-to-issue`](prd-to-issue/)                       | 完成した PRD を GitHub issue に変換する                             |
