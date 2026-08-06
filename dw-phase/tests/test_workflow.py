@@ -28,6 +28,35 @@ def current_state(tmp_path):
     )
 
 
+def write_acceptance_contract(tmp_path):
+    (tmp_path / ".dev-workflow-phase" / "acceptance-contract.md").write_text(
+        """## Goal
+検索機能を提供する。
+## Non-goals
+決済機能は対象外。
+## Phase Scope
+### Search scope
+- **Phase**: phase1
+## Acceptance Criteria
+### AC-001: 検索できる
+- **Phase**: phase1
+- Expected Result: 検索結果が返る。
+## Constraints and Compatibility
+既存 API を維持する。
+## Prioritized Risks
+### RISK-001: 検索不能
+- **Phase**: phase1
+## Validation Matrix
+### VM-001: 検索テスト
+- **Phase**: phase1
+- Command: python3 -m pytest
+## Assumptions and Open Questions
+なし。
+""",
+        encoding="utf-8",
+    )
+
+
 def test_parse_children_requires_count_sections_and_phase_type():
     text = """- **Phases**: 2
 
@@ -70,6 +99,7 @@ def test_phase_design_advances_to_first_phase_definition(tmp_path, monkeypatch):
 """,
         encoding="utf-8",
     )
+    write_acceptance_contract(tmp_path)
 
     approve_and_next(monkeypatch)
 
@@ -106,11 +136,64 @@ def test_phase_design_dependency_is_preserved(tmp_path, monkeypatch):
 """,
         encoding="utf-8",
     )
+    write_acceptance_contract(tmp_path)
 
     approve_and_next(monkeypatch)
 
     assert "## Phase 2: Feature" in design.read_text(encoding="utf-8")
     assert "- **Depends On**: phase1" in design.read_text(encoding="utf-8")
+
+
+def test_phase_design_requires_acceptance_contract(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    workflow.init_environment(tmp_path)
+    design = tmp_path / ".dev-workflow-phase" / "01_phase_design.md"
+    design.write_text(
+        """- **Phases**: 1
+
+## Phase 1: Search
+- **Phase Type**: feature
+- **Depends On**: none
+""",
+        encoding="utf-8",
+    )
+    workflow.write_state(
+        tmp_path, workflow.WorkflowState(status="REVIEWED", global_step=1)
+    )
+
+    assert run_command(monkeypatch, "next") == 1
+    assert "acceptance-contract.md" in current_state(tmp_path)
+    assert "- **Status**: IN_PROGRESS" in current_state(tmp_path)
+
+
+def test_acceptance_contract_requires_actionable_entries(tmp_path):
+    workflow.init_environment(tmp_path)
+    contract = tmp_path / ".dev-workflow-phase" / "acceptance-contract.md"
+    contract.write_text(
+        """## Goal
+goal
+## Non-goals
+non-goal
+## Phase Scope
+scope
+## Acceptance Criteria
+empty
+## Constraints and Compatibility
+constraints
+## Prioritized Risks
+risks
+## Validation Matrix
+empty
+## Assumptions and Open Questions
+assumptions
+""",
+        encoding="utf-8",
+    )
+
+    error = workflow.validate_acceptance_contract(tmp_path)
+
+    assert error is not None
+    assert "AC-001" in error
 
 
 def test_definition_phase_type_controls_step_two(tmp_path, monkeypatch):

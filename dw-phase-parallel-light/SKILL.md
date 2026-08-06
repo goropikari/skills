@@ -10,6 +10,12 @@ description: >-
 
 `dw-phase-parallel` と同じ共有 state・worktree・依存グラフを使います。phase ごとの途中レビューは行わず、agent が設計・実装・テスト・自己レビューを一括で実行します。
 
+agent にはプロジェクト全体の `.dev-workflow-phase/00_project_requirements.md`
+全文を渡しません。`.dev-workflow-phase/acceptance-contract.md`（または
+`ACCEPTANCE_CONTRACT.md`）を必須の受入条件として渡し、共通条件と対象 phase
+に割り当てられた criteria / risks / validation だけを含む slice を併せて渡します。
+contract がない場合や対象 phase の slice がない場合は agent を起動せず、修正を要求します。
+
 実行前に `.dev-workflow-phase/CURRENT_STEP.md` を確認し、`Global Step: 1` かつ `Status: REVIEWED` でない場合は、parallel state を初期化せず `dw-phase` を先に開始します。phase 設計のレビュー・承認が完了してから、同じコマンドを再実行してください。
 
 ## Commands

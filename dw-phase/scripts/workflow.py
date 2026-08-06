@@ -12,6 +12,17 @@ from pathlib import Path
 
 STATE_DIR = ".dev-workflow-phase"
 STATE_FILE = "CURRENT_STEP.md"
+ACCEPTANCE_CONTRACT_FILE = "acceptance-contract.md"
+ACCEPTANCE_CONTRACT_HEADINGS = (
+    "## Goal",
+    "## Non-goals",
+    "## Phase Scope",
+    "## Acceptance Criteria",
+    "## Constraints and Compatibility",
+    "## Prioritized Risks",
+    "## Validation Matrix",
+    "## Assumptions and Open Questions",
+)
 MIN_PHASES = 1
 MAX_PHASES = 20
 PHASE_TYPES = {"feature", "layer"}
@@ -206,8 +217,8 @@ def current_step_info(state: WorkflowState) -> StepInfo:
     if state.global_step == 1:
         return StepInfo(
             "1. フェーズ設計",
-            f"{STATE_DIR}/01_phase_design.md",
-            "トップレベル phase の責務、依存方向、完了条件、実装順、Phase Type を定義する。",
+            f"{STATE_DIR}/01_phase_design.md と {STATE_DIR}/{ACCEPTANCE_CONTRACT_FILE}",
+            "トップレベル phase の責務、依存方向、完了条件、Phase Type と、実装に渡す受入条件 contract を定義する。",
         )
 
     path = f"{STATE_DIR}/{state.current_path}" if state.current_path else STATE_DIR
@@ -275,6 +286,9 @@ def step_notes(state: WorkflowState) -> str:
 - `{STATE_DIR}/00_project_requirements.md` を読み、トップレベル phase を設計する。
 - 必須メタデータ `- **Phases**: N` を書く。N は {MIN_PHASES} 以上 {MAX_PHASES} 以下の整数。
 - 各 `## Phase N: 名前` セクションに `- **Phase Type**: feature|layer` を書く。
+- `{STATE_DIR}/{ACCEPTANCE_CONTRACT_FILE}` を作成し、PRD 全文ではなく実装に必要な受入条件へ要約する。
+- contract には `## Goal`、`## Non-goals`、`## Phase Scope`、`## Acceptance Criteria`、`## Constraints and Compatibility`、`## Prioritized Risks`、`## Validation Matrix`、`## Assumptions and Open Questions` を含める。
+- 対象外 phase の要件や背景説明は contract に含めず、候補 agent が実装に必要な範囲だけを記載する。
 """
     if state.local_stage == "definition":
         return """## 進め方
@@ -523,6 +537,67 @@ def test_design_path(base_dir: Path, state: WorkflowState) -> Path:
     return base_dir / STATE_DIR / state.current_path / "03_test_design.md"
 
 
+def acceptance_contract_path(base_dir: Path) -> Path:
+    return base_dir / STATE_DIR / ACCEPTANCE_CONTRACT_FILE
+
+
+def validate_acceptance_contract(base_dir: Path) -> str | None:
+    path = acceptance_contract_path(base_dir)
+    if not path.exists():
+        return f"`{path.relative_to(base_dir)}` が必要です。"
+    text = path.read_text(encoding="utf-8")
+    sections: dict[str, str] = {}
+    for heading in ACCEPTANCE_CONTRACT_HEADINGS:
+        name = heading.removeprefix("## ")
+        match = re.search(
+            rf"^##\s+{re.escape(name)}\s*$([\s\S]*?)(?=^##\s+|\Z)",
+            text,
+            re.MULTILINE,
+        )
+        if match:
+            body = re.sub(r"<!--.*?-->", "", match.group(1), flags=re.DOTALL).strip()
+            if body:
+                sections[heading] = body
+    missing = [
+        heading for heading in ACCEPTANCE_CONTRACT_HEADINGS if heading not in sections
+    ]
+    if missing:
+        return f"`{path.relative_to(base_dir)}` に必須セクションがありません: {', '.join(missing)}"
+    criteria = sections["## Acceptance Criteria"]
+    criterion_matches = list(
+        re.finditer(
+            r"^###\s+(AC-\d{3,}:\s+\S.*)$([\s\S]*?)(?=^###\s+|\Z)",
+            criteria,
+            re.MULTILINE,
+        )
+    )
+    if not criterion_matches:
+        return f"`{path.relative_to(base_dir)}` に `### AC-001: ...` 形式の受入条件が必要です。"
+    for match in criterion_matches:
+        body = match.group(2)
+        if not re.search(r"\*\*Phase(?:s)?\*\*:\s*phase\d+", body):
+            return f"受入条件 `{match.group(1)}` に対象 phase がありません。"
+        if not re.search(r"(?:Expected Result|期待結果)\s*[:：]", body):
+            return f"受入条件 `{match.group(1)}` に Expected Result / 期待結果がありません。"
+    matrix = sections["## Validation Matrix"]
+    matrix_matches = list(
+        re.finditer(
+            r"^###\s+(VM-\d{3,}:\s+\S.*)$([\s\S]*?)(?=^###\s+|\Z)",
+            matrix,
+            re.MULTILINE,
+        )
+    )
+    if not matrix_matches:
+        return f"`{path.relative_to(base_dir)}` に `### VM-001: ...` 形式の検証条件が必要です。"
+    for match in matrix_matches:
+        body = match.group(2)
+        if not re.search(r"\*\*Phase(?:s)?\*\*:\s*phase\d+", body):
+            return f"検証条件 `{match.group(1)}` に対象 phase がありません。"
+        if not re.search(r"(?:Command|コマンド)\s*[:：]", body):
+            return f"検証条件 `{match.group(1)}` に Command / コマンドがありません。"
+    return None
+
+
 def invalid(message: str, state: WorkflowState, base_dir: Path) -> int:
     write_state(base_dir, WorkflowState(**{**state.__dict__, "status": "IN_PROGRESS"}))
     print_header(RED, "DW-PHASE: INVALID WORKFLOW METADATA")
@@ -543,6 +618,14 @@ def transition_from_reviewed(base_dir: Path, state: WorkflowState) -> int:
         return 0
 
     if state.global_step == 1:
+        contract_error = validate_acceptance_contract(base_dir)
+        if contract_error:
+            return invalid(
+                contract_error
+                + " phase design と同じ review/approve サイクルで修正してください。",
+                state,
+                base_dir,
+            )
         ensure_top_level_phase_dependencies(base_dir)
         children = read_children(base_dir, "")
         if children is None:
@@ -783,6 +866,12 @@ def print_transition(old_state: WorkflowState, new_state: WorkflowState) -> None
     print(f"現在のステータス: {YELLOW}{BOLD}IN_PROGRESS{RESET}")
     print(f"\n{BOLD}説明:{RESET}")
     print(new.description)
+    print(
+        f"\n{GREEN}{BOLD}次のアクション:{RESET} `{new.target}` の作業を直ちに開始してください。"
+    )
+    print(
+        "この遷移結果を表示しただけで停止せず、作業完了後に review を実行してください。"
+    )
     print(f"{CYAN}{BOLD}========================================={RESET}")
 
 

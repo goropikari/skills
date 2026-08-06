@@ -121,15 +121,6 @@ $review-orchestrator
 
 開発フローの状態と成果物は、対象プロジェクトの `.dev-workflow*` ディレクトリに保存されます。Codex と Claude Code で同じ状態を共有する場合は、同じプロジェクトルートから実行してください。
 
-## AI Auto Dev
-
-`bin/` には GitHub issue を監督し、worker に実装と PR 作成を委譲するスクリプトがあります。詳細なオプションと環境変数は [`bin/README.md`](bin/README.md) を参照してください。
-
-```bash
-ai-auto-dev-supervisor --worker-cmd ai-auto-dev-worker
-ai-auto-dev-supervisor --worker-cmd ai-auto-dev-worker-light
-```
-
 ## 開発・検証
 
 Python のテストを実行します。
@@ -152,8 +143,7 @@ make lint
 ├── <skill-name>/SKILL.md   # Agent Skill の定義
 ├── <skill-name>/agents/    # agent 用メタデータ（必要な skill のみ）
 ├── <skill-name>/scripts/   # 実行ロジック（必要な skill のみ）
-├── bin/                     # AI Auto Dev の実行スクリプト
-├── tests/                   # worker/supervisor のテスト
+├── tests/                   # skill / workflow のテスト
 └── Makefile                 # install、link、fmt、lint
 ```
 

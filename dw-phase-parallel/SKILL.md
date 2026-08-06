@@ -10,6 +10,12 @@ description: >-
 
 `dw-phase` の Global Step 1 が `REVIEWED` になった後に使用する、phase 単位の並列実装オーケストレーターです。`dw-phase` の state は変更せず、`.dev-workflow-phase-parallel/` に独自 state を保存します。
 
+agent にはプロジェクト全体の `.dev-workflow-phase/00_project_requirements.md`
+全文を渡しません。`.dev-workflow-phase/acceptance-contract.md`（または
+`ACCEPTANCE_CONTRACT.md`）を必須の受入条件として渡し、共通条件と対象 phase
+に割り当てられた criteria / risks / validation だけを含む slice を併せて渡します。
+contract がない場合や対象 phase の slice がない場合は agent を起動せず、修正を要求します。
+
 ## Commands
 
 - `$dw-phase-parallel`: 初期化済みなら状態表示、未初期化なら依存グラフを検証して初期化

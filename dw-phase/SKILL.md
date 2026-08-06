@@ -14,7 +14,7 @@ description: >-
 
 ## 使い方
 
-ユーザーが以下のコマンドを入力した際、本スキルに同封されている `scripts/workflow.py` を実行し、その出力をそのままユーザーに表示してください。
+ユーザーが以下のコマンドを入力した際、本スキルに同封されている `scripts/workflow.py` を実行してください。`next` が成功した場合、出力を表示するだけで終了せず、新しい `CURRENT_STEP.md` とターゲットを読み、同じターンで次の作業を直ちに開始してください。
 
 `scripts/workflow.py` はこの `SKILL.md` から見た相対パスです。スキルのインストール場所に合わせて絶対パスを解決し、以下の形で実行してください。
 
@@ -40,7 +40,9 @@ Codex と Claude Code のどちらで実行しても、同じ対象プロジェ�
 - `CURRENT_STEP.md` の `Phase Final Step: yes` は、その phase の最後の処理を示します。作業完了後にレビュー・承認を経て `$dw-phase next` を実行すると、次の phase へ進むか、全体を完了します。
 - 全体ステップは次の 2 つです。
   - `0. プロジェクト全体の要件定義`: `.dev-workflow-phase/00_project_requirements.md`
-  - `1. フェーズ設計`: `.dev-workflow-phase/01_phase_design.md`
+  - `1. フェーズ設計`: `.dev-workflow-phase/01_phase_design.md` と `.dev-workflow-phase/acceptance-contract.md`
+- Global Step 1 では、PRD 全文ではなく phase 実装に必要な受入条件を `.dev-workflow-phase/acceptance-contract.md` に要約してください。次の phase へ進むには、contract に `## Goal`、`## Non-goals`、`## Phase Scope`、`## Acceptance Criteria`、`## Constraints and Compatibility`、`## Prioritized Risks`、`## Validation Matrix`、`## Assumptions and Open Questions` が必要です。
+- `## Acceptance Criteria` には `### AC-001: ...` 形式の項目、`- **Phase**: phaseN`、`Expected Result:` または `期待結果:` を記載してください。`## Validation Matrix` には `### VM-001: ...` 形式の項目、対象 phase、`Command:` または `コマンド:` を記載してください。空の見出しだけでは承認されません。
 - フェーズ設計書には必ず `- **Phases**: N` を記載してください。`N` は 1 以上 20 以下の整数です。
 - フェーズ設計書には `## Phase N: 名前` を N 個記載し、各セクションに必ず `- **Phase Type**: feature|layer` を記載してください。
 - 各トップレベル phase セクションには `- **Depends On**: none|phaseN[, phaseN...]` を記載してください。新規設計書では必須です。既存設計書の未指定は `none` として後方互換に扱います。
@@ -69,3 +71,5 @@ Codex と Claude Code のどちらで実行しても、同じ対象プロジェ�
 - 子 phase は分割設計書の記載順に深さ優先で進みます。子 phase 群がすべて完了したら親 phase は自動的に完了扱いになります。
 - 全トップレベル phase が完了したらワークフロー全体も `COMPLETED` になります。
 - 各ステップの作業が完了したら、生成・更新した成果物のパスと内容または要約をユーザーに出力し、その後 AI 自身で `python3 "<このスキルディレクトリ>/scripts/workflow.py" review` を実行してレビュー待ち状態にしてください。
+- `$dw-phase next` が `DW-PHASE STEP TRANSITION` を返したら、それは作業完了ではなく次の作業開始の合図です。`CURRENT_STEP.md` の `Target`、`Step Name`、`Local Stage`、制約を確認し、指定された成果物の作成・更新を開始してください。ユーザーの再指示を待って停止してはいけません。
+- `next` 後の新しいステップが `definition`、`gherkin`、`contract`、`test-design`、`split-design`、`interface`、`tests`、`implementation` のいずれであっても、現在のステップの作業を実行し、完了後に `review` へ進めてください。

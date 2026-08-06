@@ -57,10 +57,13 @@ def test_reviewed_mode_requires_agent_command() -> None:
     assert common.command_from_args(args) == ""
 
 
-def test_prompt_includes_requirements_and_phase_design(tmp_path: Path) -> None:
+def test_prompt_includes_contract_and_only_selected_phase_design(
+    tmp_path: Path,
+) -> None:
     state = {"step": 1}
     phase = {
         "id": "phase1",
+        "number": 1,
         "name": "Base",
         "phase_type": "layer",
         "depends_on": [],
@@ -68,16 +71,83 @@ def test_prompt_includes_requirements_and_phase_design(tmp_path: Path) -> None:
     context = tmp_path / ".dev-workflow-phase"
     context.mkdir()
     (context / "00_project_requirements.md").write_text(
-        "受け入れ条件: 検索できること", encoding="utf-8"
+        "全体PRDの対象外要件: 決済できること", encoding="utf-8"
+    )
+    (context / "acceptance-contract.md").write_text(
+        """## Goal
+検索機能を提供する。
+## Non-goals
+決済は対象外。
+## Phase Scope
+### Search scope
+- **Phase**: phase1
+## Acceptance Criteria
+### AC-001: 検索できる
+- **Phase**: phase1
+- Expected Result: 検索結果が返る。
+### AC-002: 決済できる
+- **Phase**: phase2
+- Expected Result: 決済が完了する。
+## Constraints and Compatibility
+既存 API を維持する。
+## Prioritized Risks
+### RISK-001: 検索不能
+- **Phase**: phase1
+## Validation Matrix
+### VM-001: 検索テスト
+- **Phase**: phase1
+- Command: python3 -m pytest
+### VM-002: 決済テスト
+- **Phase**: phase2
+- Command: python3 -m pytest
+## Assumptions and Open Questions
+なし。
+""",
+        encoding="utf-8",
     )
     (context / "01_phase_design.md").write_text(
-        "Phase 1 の責務: 検索基盤", encoding="utf-8"
+        """- **Phases**: 2
+
+## Phase 1: Base
+- **Phase Type**: layer
+- **Depends On**: none
+- 責務: 検索基盤
+
+## Phase 2: Payment
+- **Phase Type**: feature
+- **Depends On**: none
+- 責務: 決済
+""",
+        encoding="utf-8",
     )
 
     request = common.prompt(tmp_path, state, phase, True)
 
-    assert "受け入れ条件: 検索できること" in request
-    assert "Phase 1 の責務: 検索基盤" in request
+    assert "AC-001: 検索できる" in request
+    assert "AC-002: 決済できる" not in request
+    assert "Phase 1: Base" in request
+    assert "責務: 検索基盤" in request
+    assert "Phase 2: Payment" not in request
+    assert "全体PRDの対象外要件" not in request
+
+
+def test_prompt_fails_closed_without_acceptance_contract(tmp_path: Path) -> None:
+    context = tmp_path / ".dev-workflow-phase"
+    context.mkdir()
+    (context / "01_phase_design.md").write_text(
+        "## Phase 1: Base\n- **Phase Type**: layer\n",
+        encoding="utf-8",
+    )
+    phase = {
+        "id": "phase1",
+        "number": 1,
+        "name": "Base",
+        "phase_type": "layer",
+        "depends_on": [],
+    }
+
+    with pytest.raises(RuntimeError, match="acceptance-contract.md"):
+        common.prompt(tmp_path, {}, phase, True)
 
 
 def test_phase_worktree_slug_is_ascii(tmp_path: Path) -> None:

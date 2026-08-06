@@ -1,0 +1,4 @@
+interface:
+  display_name: "Whitebox Risk-Based Test"
+  short_description: "Implementation-focused risk-based test design"
+  default_prompt: "Analyze implementation and technical risks, then produce a prioritized whitebox risk-based test design."

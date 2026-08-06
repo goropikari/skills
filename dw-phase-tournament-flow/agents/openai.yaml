@@ -1,0 +1,4 @@
+interface:
+  display_name: "DW Phase Tournament Flow"
+  short_description: "Coordinate phase delivery and risk-based testing"
+  default_prompt: "Run the delivery flow from approved dw-phase design through risk-based test planning, parallel implementation, tournament selection for high-risk phases, review, integration, and verification."

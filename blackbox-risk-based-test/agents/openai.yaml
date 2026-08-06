@@ -1,0 +1,4 @@
+interface:
+  display_name: "Blackbox Risk-Based Test"
+  short_description: "Behavior-focused risk-based test design"
+  default_prompt: "Analyze observable behavior and business risks, then produce a prioritized risk-based test design."

@@ -197,12 +197,90 @@ def context_document(root: Path, relative_path: str) -> str:
         return f"（{relative_path} は見つかりません）"
 
 
+def phase_design_section(root: Path, phase: dict) -> str:
+    """Return only the selected phase section from the shared design."""
+    text = context_document(root, ".dev-workflow-phase/01_phase_design.md")
+    match = re.search(
+        rf"^##\s+Phase\s+{phase['number']}:.*?(?=^##\s+Phase\s+\d+:|\Z)",
+        text,
+        re.M | re.S,
+    )
+    return (
+        match.group(0).strip()
+        if match
+        else f"（{phase['id']} の設計セクションは見つかりません）"
+    )
+
+
+def acceptance_contract(root: Path) -> tuple[str, str] | None:
+    """Find the required curated contract without falling back to the full PRD."""
+    for relative_path in (
+        ".dev-workflow-phase/acceptance-contract.md",
+        ".dev-workflow-phase/ACCEPTANCE_CONTRACT.md",
+    ):
+        path = root / relative_path
+        if path.exists():
+            return relative_path, path.read_text(encoding="utf-8")
+    return None
+
+
+def phase_contract_slice(text: str, phase_id: str) -> str:
+    """Keep shared sections and only entries explicitly assigned to phase_id."""
+    shared = {
+        "Goal",
+        "Non-goals",
+        "Constraints and Compatibility",
+        "Assumptions and Open Questions",
+    }
+    filtered = {
+        "Phase Scope",
+        "Acceptance Criteria",
+        "Prioritized Risks",
+        "Validation Matrix",
+    }
+    sections = re.finditer(
+        r"^##\s+([^\n]+)\s*$([\s\S]*?)(?=^##\s+|\Z)",
+        text,
+        re.MULTILINE,
+    )
+    output: list[str] = []
+    for match in sections:
+        title, body = match.group(1).strip(), match.group(2).strip()
+        if title in shared:
+            output.append(f"## {title}\n{body}")
+            continue
+        if title not in filtered:
+            continue
+        entries = re.finditer(
+            r"^###\s+([^\n]+)\s*$([\s\S]*?)(?=^###\s+|\Z)",
+            body,
+            re.MULTILINE,
+        )
+        selected = [
+            f"### {entry.group(1).strip()}\n{entry.group(2).strip()}"
+            for entry in entries
+            if re.search(
+                rf"\*\*Phase(?:s)?\*\*:\s*[^\n]*\b{re.escape(phase_id)}\b",
+                entry.group(2),
+            )
+        ]
+        if selected:
+            output.append(f"## {title}\n" + "\n\n".join(selected))
+    return "\n\n".join(output)
+
+
 def prompt(root: Path, state: dict, phase: dict, light: bool) -> str:
     mode = "一括実装" if light else "ステップ単位のレビュー型"
-    requirements = context_document(
-        root, ".dev-workflow-phase/00_project_requirements.md"
-    )
-    phase_design = context_document(root, ".dev-workflow-phase/01_phase_design.md")
+    contract = acceptance_contract(root)
+    if contract is None:
+        raise RuntimeError(".dev-workflow-phase/acceptance-contract.md が必要です")
+    contract_label, full_contract_text = contract
+    contract_text = phase_contract_slice(full_contract_text, phase["id"])
+    if not contract_text:
+        raise RuntimeError(
+            f"{phase['id']} に割り当てられた acceptance contract がありません"
+        )
+    phase_design = phase_design_section(root, phase)
     instructions = (
         "設計・実装・テスト・自己レビューまで一気に行い、対象テストと全体テストを実行してください。"
         if light
@@ -218,15 +296,15 @@ Phase Type: {phase["phase_type"]}
 {instructions}
 完了内容とテスト結果を標準出力に報告してください。
 
-以下は親 worktree から渡された参照資料です。実装方針・受け入れ条件・対象範囲を決める際に必ず確認してください。
+以下は親 worktree から渡された、今回の phase に必要な参照資料です。実装方針・受け入れ条件・対象範囲を決める際に必ず確認してください。プロジェクト全体の PRD/要件定義書全文は渡していません。対象外の要件を推測して実装せず、不明点は仮定として報告してください。
 
---- 要件定義書: .dev-workflow-phase/00_project_requirements.md ---
-{requirements}
---- 要件定義書ここまで ---
+--- 受入条件 contract: {contract_label} ---
+{contract_text}
+--- 受入条件 contract ここまで ---
 
---- phase 設計書: .dev-workflow-phase/01_phase_design.md ---
+--- 対象 phase の設計: .dev-workflow-phase/01_phase_design.md ---
 {phase_design}
---- phase 設計書ここまで ---
+--- 対象 phase の設計ここまで ---
 """
 
 
