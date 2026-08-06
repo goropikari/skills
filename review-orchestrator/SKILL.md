@@ -22,6 +22,10 @@ description: Select and coordinate the smallest effective set of review skills b
 
 - ユーザーが明示した review は、不要に見えても実行対象に含める。
 - それ以外は、変更の証拠から必要性を判断する。全 skill を機械的に実行しない。
+- レビューの目的は、変更量を増やすことではなく、観測可能なリスクを最小の変更で下げることである。
+- レビュー中は実装、テスト追加、抽象化、ファイル分割を行わない。finding と最小修正案の提示に留める。
+- 修正案は、削除、既存コードへの統合、条件分岐・状態・抽象化の削減を、新規コードの追加より優先する。
+- 具体的な失敗条件、契約違反、保守コストの根拠がない提案は finding にしない。将来の可能性だけを理由にコード追加を勧めない。
 - 変更が小さくても、データ、認証、並行処理、公開契約に関係する場合は専門 review を優先する。
 - リスクが確認できない領域は、実行しない理由を記録する。未確認と無関係を混同しない。
 - 各 reviewer には対象範囲と担当外の観点を明示する。
@@ -46,6 +50,13 @@ description: Select and coordinate the smallest effective set of review skills b
 3. 既存の防御、テスト、契約が反例を防ぐか確認する。
 4. 防げない場合は影響と severity を報告する。
 5. 反例が成立しない場合は、その根拠と残る不確実性を報告する。
+
+各 reviewer の依頼には、次の変更最小化指示も付ける。
+
+1. まず、既存コードの削除・統合・簡約で解消できるか確認する。
+2. 新しいコード、型、状態、抽象化、依存関係、テストを提案する場合は、追加が必要な具体的理由を示す。
+3. 追加テストは、既存テストが検出できない具体的な失敗条件がある場合だけ提案する。
+4. 「より明確」「将来拡張しやすい」だけでは追加変更の根拠にしない。
 
 ## Routing Matrix
 
@@ -142,6 +153,13 @@ description: Select and coordinate the smallest effective set of review skills b
 - Approve with comments
 - Request changes
 - Blocked pending evidence
+
+## Change Minimization
+
+- Deletions or simplifications considered:
+- Additions that are strictly required:
+- Additions rejected as speculative or redundant:
+- Expected net effect on complexity:
 ```
 
 最終 recommendation は、finding がないことではなく、敵対的に調べた範囲と未検証の前提を考慮して決める。未検証の重大な前提が残る場合は Approve ではなく Blocked pending evidence または Request changes を選ぶ。

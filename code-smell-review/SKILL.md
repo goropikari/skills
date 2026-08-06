@@ -16,6 +16,8 @@ Review code for design and maintainability smells that require contextual judgme
 5. If evidence is weak or the concern is only a personal preference, do not report it.
 6. If no findings exist, state that no AI-detectable code smells were found and briefly mention review limitations.
 
+Review is diagnostic by default. Do not modify the code or turn every finding into an implementation task. Prefer a smaller design with fewer responsibilities, states, abstractions, and files.
+
 ## Review Criteria
 
 Look for these smell categories when supported by evidence:
@@ -45,6 +47,18 @@ Avoid these unless they are direct evidence of one of the design smells above:
 - Medium: The smell creates meaningful maintainability or testability risk with plausible future cost.
 - Low: The smell is localized and worth fixing opportunistically.
 
+## Minimal-Change Guidance
+
+When writing `Suggested improvement`, consider options in this order:
+
+1. Delete unnecessary code or behavior.
+2. Merge the behavior into an existing responsibility.
+3. Reduce branching, state, indirection, or abstraction.
+4. Change existing code or tests.
+5. Add a new abstraction, type, file, dependency, or test only when the earlier options cannot address the concrete risk.
+
+Do not suggest speculative extensibility, defensive layers, or new abstractions without a concrete failure mode or a demonstrated change cost. If the smell is real but no change is currently justified, report it as an observation rather than prescribing code growth.
+
 ## Output Format
 
 Use this structure unless the user asks for a different format:
@@ -63,3 +77,4 @@ Use this structure unless the user asks for a different format:
 ```
 
 Keep each finding concrete and actionable. The suggested improvement may be a refactoring direction rather than a full implementation, but it must address the identified smell rather than only changing names or formatting.
+Do not provide implementation code unless explicitly requested. For every suggestion that adds code, state the concrete risk it addresses and why deletion, consolidation, or simplification is insufficient.
