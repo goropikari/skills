@@ -1,0 +1,4 @@
+interface:
+  display_name: "Acceptance Harness"
+  short_description: "Freeze executable black-box acceptance checks."
+  default_prompt: "Use $acceptance-harness to create and freeze an executable acceptance harness before implementation."
