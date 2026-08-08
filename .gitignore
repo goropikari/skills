@@ -9,3 +9,4 @@ __pycache__/
 .nox/
 .hypothesis/
 docs/reviews/
+.implementation-orchestrator/

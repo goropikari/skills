@@ -90,7 +90,7 @@ Codex と Claude Code で利用できる Agent Skill のコレクションです
 make install
 ```
 
-active skill が `~/.claude/skills` と `~/.agents/skills` にコピーされます。シンボリックリンクで利用する場合は次を実行します。既存のパスは上書きされません。
+active skill が `~/.claude/skills` と `~/.agents/skills` にコピーされます。各コピー先の `.skills-install-state` に前回の管理対象を記録しているため、リポジトリから削除した skill は次回の `make install` でコピー先からも削除されます。状態ファイルに記録されていない既存パスは削除しません。シンボリックリンクで利用する場合は次を実行します。既存のパスは上書きされません。
 
 ```bash
 make link
