@@ -51,6 +51,11 @@ the state and artifacts.
    criteria, Gherkin scenarios, constraints, risks, and a validation matrix.
    Every criterion must have an observable expected result and validation
    command or manual procedure.
+   For an explicit external contract (such as a standard, public interface,
+   format, or compatibility promise), add boundary and invalid-input scenarios
+   that distinguish compliance from a merely plausible implementation. For
+   destructive behavior, its oracle must also prove that rejection leaves no
+   side effect.
 6. In `implement-loop`, select one unmet `AC-*` at a time. Establish a failing
    test or explicit failing observable (`red`), design and implement the
    smallest change, then rerun the condition (`green`). Record evidence before
@@ -59,6 +64,11 @@ the state and artifacts.
    regression checks, basic security checks, and evidence completeness. Add
    performance, compatibility, data-integrity, observability, accessibility,
    or other gates according to risk.
+   For a distributable CLI, library, plugin, or service, verify the built or
+   installed artifact from the consumer-facing entry point on its critical
+   workflow. Internal unit tests and `--help` / version checks do not replace
+   this test. Verify public module/package identity and install/build targets
+   when they are in scope.
 8. If a check cannot run, record `NOT RUN`, the exact reason, impact,
    alternative evidence, and residual risk. Important unverified criteria
    block PR readiness unless the user explicitly accepts the residual risk.
@@ -67,6 +77,9 @@ the state and artifacts.
 10. Generate PR-ready evidence containing summary, changed files, AC matrix,
     executed commands and outcomes, review results, assumptions, and residual
     risks. Do not claim a check passed unless it actually ran.
+11. Treat relevant exceptional states and partial failures as acceptance decisions:
+    specify the intended behavior, or record the unsupported state and its
+    user-visible error. Test it when it affects a critical or destructive flow.
 
 ## Artifacts
 
@@ -86,6 +99,11 @@ pr.md
 The script owns `state.json` and `CURRENT_STEP.md`. The agent owns the other
 artifacts and must update them at the relevant phase. Keep stable IDs (`AC-*`,
 `VM-*`, `RISK-*`) so implementation and PR evidence remain traceable.
+
+`state.json` keeps `phase_index` for stable machine-readable transitions and
+also records the corresponding `phase` key and `phase_description` in natural
+language. Treat `phase_index` as the source for transitions; the descriptive
+fields are regenerated whenever the script saves state.
 
 ## Phase gates
 

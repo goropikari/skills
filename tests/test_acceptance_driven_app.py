@@ -28,6 +28,8 @@ def test_auto_stops_at_next_phase_review_gate(tmp_path):
     assert state(tmp_path) == {
         "status": "ACTIVE",
         "phase_index": 1,
+        "phase": "acceptance-contract",
+        "phase_description": "受け入れ条件を実行可能な契約にする",
         "gate": "REVIEW",
         "mode": "auto",
     }
@@ -36,7 +38,19 @@ def test_auto_stops_at_next_phase_review_gate(tmp_path):
     result = run(tmp_path, "auto")
     assert result.returncode == 0
     assert state(tmp_path)["phase_index"] == 2
+    assert state(tmp_path)["phase"] == "design"
+    assert (
+        state(tmp_path)["phase_description"]
+        == "アーキテクチャ、インターフェース、リスク、テスト戦略を設計する"
+    )
     assert state(tmp_path)["gate"] == "REVIEW"
+
+
+def test_initial_state_includes_human_readable_phase(tmp_path):
+    result = run(tmp_path, "next")
+    assert result.returncode == 0
+    assert state(tmp_path)["phase"] == "acceptance-contract"
+    assert state(tmp_path)["phase_description"] == "受け入れ条件を実行可能な契約にする"
 
 
 def test_approve_requires_review(tmp_path):

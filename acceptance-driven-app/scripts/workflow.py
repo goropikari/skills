@@ -15,6 +15,14 @@ PHASES = [
     "verification",
     "pr-ready",
 ]
+PHASE_DESCRIPTIONS = {
+    "bootstrap": "リポジトリの前提と変更スコープを確認する",
+    "acceptance-contract": "受け入れ条件を実行可能な契約にする",
+    "design": "アーキテクチャ、インターフェース、リスク、テスト戦略を設計する",
+    "implement-loop": "受け入れ条件を一つずつ実装して検証する",
+    "verification": "必須およびリスクに応じた検証を実施する",
+    "pr-ready": "最終差分とPR提出用エビデンスを整える",
+}
 ROOT = Path(".acceptance-driven-app")
 STATE = ROOT / "state.json"
 CURRENT = ROOT / "CURRENT_STEP.md"
@@ -22,14 +30,22 @@ CURRENT = ROOT / "CURRENT_STEP.md"
 
 def load() -> dict:
     if not STATE.exists():
-        return {"status": "ACTIVE", "phase_index": 0, "gate": "WORK"}
+        return {
+            "status": "ACTIVE",
+            "phase_index": 0,
+            "phase": PHASES[0],
+            "phase_description": PHASE_DESCRIPTIONS[PHASES[0]],
+            "gate": "WORK",
+        }
     return json.loads(STATE.read_text())
 
 
 def save(state: dict) -> None:
     ROOT.mkdir(exist_ok=True)
-    STATE.write_text(json.dumps(state, indent=2, ensure_ascii=False) + "\n")
     phase = PHASES[state["phase_index"]]
+    state["phase"] = phase
+    state["phase_description"] = PHASE_DESCRIPTIONS[phase]
+    STATE.write_text(json.dumps(state, indent=2, ensure_ascii=False) + "\n")
     CURRENT.write_text(
         f"# Acceptance-Driven App Workflow\n\n"
         f"- **Phase**: {phase}\n"

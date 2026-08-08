@@ -6,19 +6,17 @@ Codex と Claude Code で利用できる Agent Skill のコレクションです
 
 ### 開発フロー・要件定義
 
-| Skill                                                                                           | 用途                                                                            |
-| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| [`acceptance-driven-app`](acceptance-driven-app/)                                               | Web/API アプリを受け入れ条件駆動で実装し、PR の証跡まで管理する                 |
-| [`dw-phase`](dw-phase/)                                                                         | phase/subphase ツリーを使って機能やレイヤーを段階的に開発する                   |
-| [`dw-phase-parallel`](dw-phase-parallel/)                                                       | 依存関係のない phase を別 worktree・別 agent で並列実装し、各段階でレビューする |
-| [`dw-phase-parallel-light`](dw-phase-parallel-light/)                                           | phase を並列に一括実装し、自己レビューとテストまで実行する                      |
-| [`dw-phase-tournament-flow`](dw-phase-tournament-flow/)                                         | リスクベーステスト、並列実装、実装トーナメント、レビュー、最終検証を統合する    |
-| [`grill-me`](grill-me/)                                                                         | 計画や設計を一問ずつ掘り下げ、共通理解を作る                                    |
-| [`prd-maker`](prd-maker/)                                                                       | 曖昧なアイデアから日本語の PRD を作成する                                       |
-| [`prd-to-issue`](prd-to-issue/)                                                                 | 完成した PRD を GitHub issue に変換する                                         |
-| [`iterative-multi-agent-tournament-development`](iterative-multi-agent-tournament-development/) | 複数 agent の実装を比較し、複数ラウンドで改善する                               |
-| [`multi-agent-tounament-development`](multi-agent-tounament-development/)                       | 複数 agent の実装を worktree 上で比較し、採用案を検証する                       |
-| [`session-learning`](session-learning/)                                                         | セッションやデバッグ履歴から再利用可能な教訓を抽出する                          |
+| Skill                                                                     | 用途                                                                         |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [`acceptance-driven-app`](acceptance-driven-app/)                         | Web/API アプリを受け入れ条件駆動で実装し、PR の証跡まで管理する              |
+| [`dw-phase`](dw-phase/)                                                   | phase/subphase ツリーを使って機能やレイヤーを段階的に開発する                |
+| [`dw-phase-parallel-light`](dw-phase-parallel-light/)                     | phase を並列に一括実装し、自己レビューとテストまで実行する                   |
+| [`dw-phase-tournament-flow`](dw-phase-tournament-flow/)                   | リスクベーステスト、並列実装、実装トーナメント、レビュー、最終検証を統合する |
+| [`grill-me`](grill-me/)                                                   | 計画や設計を一問ずつ掘り下げ、共通理解を作る                                 |
+| [`prd-maker`](prd-maker/)                                                 | 曖昧なアイデアから日本語の PRD を作成する                                    |
+| [`prd-to-issue`](prd-to-issue/)                                           | 完成した PRD を GitHub issue に変換する                                      |
+| [`multi-agent-tounament-development`](multi-agent-tounament-development/) | 複数 agent の実装を worktree 上で比較し、採用案を検証する                    |
+| [`session-learning`](session-learning/)                                   | セッションやデバッグ履歴から再利用可能な教訓を抽出する                       |
 
 ### テスト設計
 
@@ -105,16 +103,30 @@ $review-orchestrator
 
 `dw-phase` の設計レビュー後は、依存関係のない phase を並列実装できます。
 
-```text
-$dw-phase-parallel
-$dw-phase-parallel next --agent-cmd '<agent command>'
-$dw-phase-parallel status
+全体フローを使う場合は `dw-phase-tournament-flow` を入口にします。要件、
+受入条件、phase 設計、blackbox test design は `.dev-workflow-tournament/`
+に実装前に保存・承認されます。実装後に phase 設計を作り直すことはありません。
+この flow は独自 state を管理し、既存 workflow skill へ委譲しません。
 
-# 途中レビューを省略して一括実装へ切り替える場合
-$dw-phase-parallel switch light
+```text
+$dw-phase-tournament-flow
+# 要件・設計成果物を作成し、人間レビューを待つ
+
+# 設計承認後、実装 wave、必要な tournament、検証、統合を実行
+$dw-phase-tournament-flow
+
+# 状態操作も全体フローの窓口から実行
+$dw-phase-tournament-flow review
+$dw-phase-tournament-flow approve
+$dw-phase-tournament-flow next
+# 上記は `.dev-workflow-tournament/` の state を更新する
 ```
 
 `dw-phase-parallel-light` は native subagent を使うため、agent command の指定は不要です。並列系の skill は agent に commit、push、PR 作成をさせず、ユーザーが Git 操作を行った後に `status` で状態を同期します。
+
+```text
+$dw-phase-parallel-light
+```
 
 開発フローの状態と成果物は、対象プロジェクトの `.dev-workflow*` ディレクトリに保存されます。Codex と Claude Code で状態を共有する場合は、同じプロジェクトルートから実行してください。
 

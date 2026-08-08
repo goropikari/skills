@@ -88,7 +88,8 @@ this skill is strictly behavior- and contract-oriented.
 
 ## Combination Guidance
 
-Use before `multi-agent-tounament-development` to create the acceptance
-contract and shared validation plan. Use `ta-review` when requirements or
-business value need a broader review. Pair with `whitebox-risk-based-test`
-when implementation details are available and technical risk matters.
+Use before implementation or independent candidate comparison to create the
+acceptance contract and shared validation plan. Use `ta-review` when
+requirements or business value need a broader review. Pair with
+`whitebox-risk-based-test` when implementation details are available and
+technical risk matters.

@@ -1,225 +1,179 @@
 ---
 name: dw-phase-tournament-flow
-description: Orchestrate a repeatable software delivery flow from reviewed dw-phase design through blackbox and whitebox risk-based test design, dependency-aware parallel implementation, multi-agent tournament selection for high-risk phases, review, integration, and final verification. Use when a repository uses dw-phase together with dw-phase-parallel-light and multi-agent-tounament-development, or when the user asks for an end-to-end phase implementation workflow.
+description: >-
+  要件、受入条件、blackbox リスクテスト設計、phase 分割、依存関係、
+  並列実装、必要な tournament、検証、統合までを単独で管理する delivery
+  workflow。既存 workflow skill は使わず、review 系 skill だけを必要に応じて
+  呼び出す。既存 phase 設計をこの flow の成果物へ移行するときにも使う。
 ---
 
 # DW Phase Tournament Flow
 
-Run the delivery flow as a sequence of explicit gates. Preserve the existing
-skills' state, worktree, branch, review, and `NOT RUN` rules. Do not bypass a
-gate merely because an implementation appears small or obvious.
+この skill が workflow、設計、blackbox test design、状態遷移、成果物管理を
+一貫して担当します。既存の workflow / test-design skill は呼び出さず、
+必要な場合のみ review 系 skill を独立 reviewer として使います。
 
-## Flow
+## Canonical state and commands
+
+状態と成果物は対象リポジトリ直下の `.dev-workflow-tournament/` に保存します。
+`dw-phase` の `.dev-workflow-phase/` は作成・更新しません。
 
 ```text
-Requirements and context
-  -> dw-phase design + acceptance contract
-  -> review and approve
-  -> acceptance-criteria traceability + blackbox risk/test design
-  -> dependency and phase risk classification
-  -> dw-phase-parallel-light implementation waves
-       -> direct implementation for routine phases
-       -> tournament inside the assigned phase worktree for high-risk phases
-  -> phase-level whitebox review and test-quality review
-  -> integration and verification
-  -> dw-phase review/approve/next
+$dw-phase-tournament-flow          # 初期化または状態表示
+$dw-phase-tournament-flow review   # 現在の成果物をレビュー待ちにする
+$dw-phase-tournament-flow approve  # 現在の gate を承認する
+$dw-phase-tournament-flow next     # 承認済み gate を次へ進める
+$dw-phase-tournament-flow status   # completion marker を回収し ready phase を起動する
+$dw-phase-tournament-flow complete phaseN  # 統合確認済み phase を完了にする
 ```
 
-## Gate 0: Capture Context
+router はこの skill の `scripts/workflow.py` 自身を実行します。別 skill の
+workflow script へ委譲してはいけません。
 
-Before changing code, record the repository root, current directory, branch,
-HEAD, working-tree status, active `.dev-workflow-phase/` state, and the user's
-scope. Identify existing uncommitted changes and do not overwrite them.
+## Artifact layout
 
-Confirm that the requested work is represented by the current requirements and
-phase design. If the design is missing, stale, not reviewed, or not approved,
-run `dw-phase` and stop at its review gate. Do not start implementation before
-`Global Step: 1` has `Status: REVIEWED` and the phase design has been approved.
+実装を開始する前に、phase ごとの設計成果物を必ず作成・レビュー・承認します。
+phase が `phase1`、`phase2` のように確定したら、次を作成します。
 
-## Gate 1: Establish the Acceptance Contract
-
-Treat `.dev-workflow-phase/acceptance-contract.md` as the primary delivery
-contract. `dw-phase` requires it before Global Step 1 can advance. It must
-contain at least:
-
-- `## Goal`
-- `## Non-goals`
-- `## Phase Scope`
-- `## Acceptance Criteria`
-- `## Constraints and Compatibility`
-- `## Prioritized Risks`
-- `## Validation Matrix`
-- `## Assumptions and Open Questions`
-
-The contract is derived from the project requirements and phase design; it is
-not a copy of the PRD. Every acceptance criterion must be observable,
-testable, and attributable to one or more phases. Give each criterion a stable
-identifier such as `AC-001`, assign it to a phase, and state its expected
-result and evidence. Give each validation condition a stable identifier such as
-`VM-001`, assign it to a phase, and state the exact command or manual procedure.
-If a criterion is ambiguous or unverifiable, stop at the review gate and record
-it as an open question rather than allowing agents to infer behavior.
-
-For each ready phase, build a traceability slice containing only the relevant
-acceptance criteria, constraints, risks, and validation commands. Mark entries
-with `- **Phase**: phaseN` (or a comma-separated list). This slice is what
-implementation agents receive. Keep the full requirements document and
-unrelated phase criteria in orchestrator context.
-
-## Gate 2: Build the Test and Risk Basis
-
-For the approved acceptance contract and phase slices, use
-`blackbox-risk-based-test` to derive:
-
-- observable business and user risks linked to `AC-*` criteria;
-- user-visible test conditions and expected evidence for each criterion;
-- regression scope, test data, oracles, and manual checks;
-- a shared validation command set for comparable implementations.
-
-Use `whitebox-risk-based-test` when the design exposes technical concerns such
-as persistence, concurrency, security boundaries, migrations, external calls,
-performance, or failure recovery. It may be run before implementation to shape
-the plan and again after implementation to inspect the actual diff.
-
-Do not replace acceptance criteria with a coverage percentage. Record risk, impact,
-likelihood, priority, test condition, evidence, and residual risk. Carry the
-highest-priority conditions into each phase's traceability slice and
-`03_test_design.md` where applicable. Every `AC-*` criterion must have a
-validation condition or an explicit `NOT RUN` reason.
-
-## Gate 3: Classify Phases
-
-For every ready phase, record the following assessment before choosing an
-implementation mode:
-
-```markdown
-- Impact: High|Medium|Low
-- Likelihood: High|Medium|Low
-- Uncertainty: High|Medium|Low
-- Base Risk Score: Impact score × Likelihood score (1-9)
-- Blast Radius: local|component|system|external
-- Reversibility: easy|moderate|hard
-- Validation Confidence: high|medium|low
-- Implementation Mode: direct|tournament|serial
-- Rationale:
+```text
+.dev-workflow-tournament/
+├── CURRENT_STEP.md
+├── state.json
+├── 00_context.md
+├── 01_acceptance_contract.md
+├── 02_phase_design.md
+├── 03_traceability.md
+├── phases/
+│   └── phaseN/
+│       ├── 01_definition.md
+│       ├── 02_blackbox_test_design.md
+│       ├── 03_risk_assessment.md
+│       └── 04_validation_plan.md
+└── reports/
+    ├── phaseN-review.md
+    └── final-report.md
+├── requests/                 # phase ごとの native subagent 依頼
+└── completion/               # subagent の終了 marker
 ```
 
-Score Low=1, Medium=2, and High=3. Use `Base Risk Score` as the starting
-point, not as the only decision. Classify implementation mode using these
-rules, in order:
+`02_blackbox_test_design.md` はこの skill が作成する正式な成果物です。各リスク
+には `RISK-*`、テスト条件には `TC-*`、受入条件には `AC-*`、検証条件には
+`VM-*` の安定した ID を付けます。最低限、次を記録します。
 
-- **Serial**: a required dependency is unfinished or the phase cannot be
-  tested meaningfully until another phase is integrated.
-- **Tournament**: a critical domain is involved; or Impact is High and either
-  Likelihood or Uncertainty is Medium/High; or Uncertainty is High together
-  with component-or-larger blast radius, hard reversibility, or low validation
-  confidence; or two or more materially different designs are plausible.
-- **Direct light implementation**: Impact and Likelihood are Low/Medium,
-  Uncertainty is Low, blast radius is local/component, reversibility is easy or
-  moderate, validation confidence is high, and no tournament trigger applies.
+- 受入条件との対応、Impact、Likelihood、Uncertainty、Base Risk、Priority
+- 前提データ、操作・シナリオ、期待される外部観測結果、test oracle
+- 回帰範囲、手動確認、未実行 (`NOT RUN`) の理由、残余リスク
 
-When multiple rules apply, choose the more conservative mode. Record the
-triggering rule in `Rationale`; do not silently override it.
+実装後に初めて test design を作ってはいけません。実装後の blackbox review は
+既存設計を実装結果に照合し、`03_traceability.md` と phase report の PASS /
+FAIL / NOT RUN を更新します。
 
-Keep the dependency graph from `dw-phase` authoritative. Start only ready
-phases and use `dw-phase-parallel-light next` to launch at most its supported
-parallel batch. Do not create a second ad-hoc dependency graph.
+## State machine
 
-## Gate 4: Implement in Isolated Worktrees
+次の順序を崩しません。
 
-Use `dw-phase-parallel-light` for the ready implementation wave. Each agent
-must work only in its assigned phase worktree and must return the required
-completion marker/status. It must not push, open a PR, or modify the caller's
-root unless the underlying skill explicitly requires it.
+```text
+context
+  -> acceptance-contract
+  -> phase-design
+  -> per-phase design (definition + blackbox + risk + validation)
+  -> design approval
+  -> implementation wave
+  -> verification and review
+  -> integration
+  -> final approval
+```
 
-For a phase classified as tournament:
+各段階は `WORK -> REVIEW -> APPROVED` の gate を持ちます。`approve` なしに
+次の段階へ進めません。設計 gate が未承認なら、実装 agent、worktree、candidate
+を起動してはいけません。
 
-1. Launch the tournament from that phase's assigned worktree, not the caller's
-   repository root.
-2. Give all candidates the phase-specific acceptance-criteria slice,
-   blackbox test conditions, validation commands, and exact assigned
-   worktree/branch. Do not give the full PRD by default.
-3. Select by executed evidence and requirement compliance. Use Level 1 for a
-   small isolated change, Level 2 by default, and Level 3 for critical or
-   high-impact changes.
-4. Let the tournament integrate one winner and run its independent verifier in
-   that phase worktree.
-5. Preserve candidate worktrees and produce the required Japanese comparison
-   report. Never indiscriminately splice candidate code.
+### Design gates
 
-For routine phases, the light agent may implement directly, but it must still
-execute the shared validation commands, record unavailable checks as `NOT RUN`,
-and perform a self-review before returning `READY_TO_COMMIT`.
+1. `00_context.md` に repository root、branch、HEAD、dirty files、依頼範囲、
+   制約を記録する。
+2. `01_acceptance_contract.md` に Goal、Non-goals、Scope、`AC-*`、互換性、
+   優先リスク、`VM-*`、前提と未解決事項を記録する。
+3. `02_phase_design.md` に phase ごとの責務、Phase Type、依存、完了条件、
+   Impact、Likelihood、Uncertainty、Blast Radius、Reversibility、Validation
+   Confidence、Implementation Mode を記録する。各 `## Phase N:` セクションには
+   必ず phase 固有の `### Acceptance Criteria` を置き、`AC-PN-*`、Expected
+   Result、Evidence を記載する。phase の受入条件を global contract にだけ
+   書いて済ませてはいけない。
+4. phase ごとに4つの設計成果物を作成し、`03_traceability.md` で global の
+   `AC-*`、phase 固有の `AC-PN-*`、`VM-*` を phase、test condition、evidence
+   に結び付ける。
 
-## Gate 5: Review the Result
+### Contract and delivery boundary
 
-After each implementation wave, run the smallest effective reviews based on
-the changed behavior:
+仕様が標準、公開インターフェース、形式、互換性などの**明示的な外部契約**を
+指定する場合、受入契約にはその契約を満たす実装上の根拠と、境界・不正入力を
+扱う `AC-*` / `TC-*` を記載します。見かけ上動作する、より広い解釈を契約準拠と
+みなしてはいけません。破壊的操作では、拒否時に副作用を起こさないことまで
+oracle に含めます。
 
-- `whitebox-risk-based-test` for implementation risk coverage and testability;
-- `test-quality-review` for assertion strength, determinism, and false
-  positives;
-- `security-review`, `migration-review`, `data-integrity-review`,
-  `concurrency-review`, or `performance-review` when the risk basis calls for
-  them;
-- `blackbox-risk-based-test` to confirm every applicable `AC-*` criterion and
-  user-visible condition remains covered.
+配布可能な CLI、ライブラリ、プラグイン、サービスの phase では、成果物名、公開
+module/package 名、install/build target、利用者が通る入口を acceptance contract と
+traceability に含めます。単体の内部 API が動くだけでは配布要件を満たしません。
 
-Use `review-finding-validator` when findings come from multiple agents or an AI
-review and need evidence-based validation. Do not repair code inside an
-independent verifier/reviewer role; apply fixes in the implementation role and
-rerun affected checks.
+phase の設計が曖昧、oracle が定義不能、または acceptance criterion が検証
+不能な場合は実装に進まず、`Assumptions and Open Questions` に記録して人間の
+判断を求めます。
 
-## Gate 6: Integrate and Advance State
+### Implementation and tournament
 
-Before integration, verify branch, canonical worktree path, commit, diff,
-tracked/untracked status, validation results, and boundary compliance. Reject
-any candidate or agent with an unauthorized caller-root modification.
+承認済みで依存が解決した phase だけを実装します。ready phase は最大3件まで
+同時に起動し、依存関係のない phase は同じ implementation wave で並列に進めます。
+各 phase は専用 worktree で作業し、caller root を変更しません。実装 agent には full PRD ではなく、
+対象 phase の definition、blackbox 条件、validation plan、制約、completion
+marker を渡します。
 
-Integrate only completed, reviewed phase work. Resolve conflicts deliberately,
-rerun impacted tests, and keep phase artifacts and implementation commits
-traceable. Before advancing state, perform an acceptance-criteria gate:
+- routine phase は単独実装し、自己レビューと共通 validation を行う。
+- Impact が High、Uncertainty が High、外部・永続化・認証・決済・migration
+  などを含む phase、または設計候補が複数ある phase は tournament にする。
+- tournament は独立 candidate を比較し、実行済み evidence、受入条件、回帰
+  リスク、変更範囲で winner を選ぶ。比較には、外部契約の境界条件、実際の
+  配布入口を通る critical flow、関連する異常状態と部分失敗を含める。
+  candidate 比較は
+  `reports/phaseN-review.md` に残す。
+- 実装 agent は commit、push、PR 作成を行わない。統合前に branch、worktree、
+  diff、tracked/untracked、validation、caller-root boundary を確認する。
+- `status` は completion marker を回収し、成功した phase を `READY_TO_COMMIT`
+  にします。統合と検証後、`complete phaseN` を実行すると、その phase に依存
+  する次の ready phase が自動的に起動します。
 
-- every applicable `AC-*` criterion is `PASS`, or has an explicit
-  `NOT RUN`/residual-risk record;
-- the phase's highest-priority risks have executed evidence;
-- failed criteria block completion unless the user explicitly accepts the
-  residual risk;
-- implementation, tests, and validation evidence are traceable to the
-  criterion IDs.
+### Review boundary
 
-After this gate and the phase's required artifacts are complete, run `dw-phase
-review`, obtain the user's approval where required, and then run `dw-phase
-next` to advance the state. Do not mark a phase complete based only on a
-passing unit-test command if an acceptance criterion or highest-risk observable
-behavior was not checked.
+既存 skill を呼び出せるのは review 目的だけです。変更内容に応じて次を
+独立 reviewer として使えます。
 
-## Completion Report
+- `security-review`, `privacy-review`
+- `migration-review`, `data-integrity-review`, `concurrency-review`
+- `performance-review`, `observability-review`, `accessibility-review`
+- `test-quality-review`, `architecture-review`, `change-impact-review`,
+  `review-finding-validator`
 
-At the end of the overall flow, summarize in Japanese:
+これらは設計・実装を進める owner ではありません。reviewer の指摘は
+`phaseN-review.md` に記録し、修正は実装 role で行ってから該当 validation と
+review を再実行します。blackbox の設計と acceptance traceability の更新は
+この skill 自身が行います。
 
-- requirements, approved phase design, acceptance contract, and implementation waves;
-- acceptance-criteria traceability, including every `AC-*` result and evidence;
-- each phase's mode: direct or tournament, with rationale;
-- each phase's Impact, Likelihood, Uncertainty, Base Risk Score, blast radius,
-  reversibility, and validation confidence;
-- blackbox risks and acceptance coverage;
-- whitebox risks and technical coverage;
-- branches, worktrees, commits, changed files, and integration details;
-- validation commands and outcomes, including every `NOT RUN` reason;
-- review findings and resolutions;
-- residual risks and recommended follow-up;
-- final verdict: `PASS`, `PASS WITH RISKS`, or `FAIL`.
+## Completion gate
 
-Do not claim success for an unexecuted command, an unverified property, or an
-unapproved phase. Keep generated comparison reports untracked as required by
-the tournament skill.
+phase 完了には次をすべて満たします。
 
-## Decision Summary
+- 全 applicable `AC-*` が PASS、または明示的な `NOT RUN` と残余リスクを持つ。
+- P0/P1 の blackbox 条件に実行済み evidence がある。
+- 外部に配布・起動される成果物では、install/build 済みの成果物を利用者と同じ
+  入口から起動する critical-flow E2E evidence がある。内部 API / help / version
+  だけの確認は代替にしない。
+- 外部契約と破壊的操作では、境界条件や拒否時の安全性を示す evidence がある。
+  例外的な実行状態の扱いも仕様・evidence のどちらかで明示する。
+- 実装、テスト、検証、review finding が criterion ID に追跡できる。
+- 依存 phase の完了、統合後の回帰テスト、caller-root boundary を確認する。
+- 未実行 command は成功扱いにせず、理由を残す。
 
-Use this skill as the entry point when the user describes the whole workflow.
-Delegate the actual state transitions to `dw-phase`, parallel scheduling to
-`dw-phase-parallel-light`, candidate comparison to
-`multi-agent-tounament-development`, and risk analysis to the blackbox and
-whitebox skills. This skill coordinates them; it does not replace their
-individual invariants.
+全体完了時は `reports/final-report.md` に requirements、設計、phase 別の mode と
+risk、blackbox/whitebox coverage、branch/worktree/commit、validation 結果、
+review finding、残余リスク、最終判定 (`PASS` / `PASS WITH RISKS` / `FAIL`) を
+記録します。

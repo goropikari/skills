@@ -1,0 +1,4 @@
+interface:
+  display_name: "New App Engineering Workflow"
+  short_description: "Build new apps with minimal, gated, repeatable steps"
+  default_prompt: "Use $new-app-engineering-workflow to build this new app from PRD through a human-gated architecture, Golden Path, and verified feature loop."

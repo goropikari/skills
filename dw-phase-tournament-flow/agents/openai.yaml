@@ -1,4 +1,4 @@
 interface:
   display_name: "DW Phase Tournament Flow"
   short_description: "Coordinate phase delivery and risk-based testing"
-  default_prompt: "Run the delivery flow from approved dw-phase design through risk-based test planning, parallel implementation, tournament selection for high-risk phases, review, integration, and verification."
+  default_prompt: "Own the complete delivery flow in .dev-workflow-tournament: create and approve context, acceptance contract, phase design, blackbox test design, risk and validation artifacts before implementation; schedule up to three dependency-ready phases in parallel on isolated worktrees, using direct or tournament implementation as appropriate; then verify, review, integrate, and produce the final report. Do not invoke other workflow or test-design skills; use existing skills only as independent reviewers."

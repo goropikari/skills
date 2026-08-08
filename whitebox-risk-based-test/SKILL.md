@@ -96,9 +96,9 @@ symbols, branches, data paths, or runtime boundaries when evidence exists.
 
 ## Combination Guidance
 
-Use after `multi-agent-tounament-development` candidates are available to
-compare technical risk coverage, or before implementation to define focused
-validation conditions. Pair with `security-review`, `data-integrity-review`,
-`migration-review`, `concurrency-review`, or `performance-review` when those
-risks are material. Pair with `blackbox-risk-based-test` to ensure technical
-coverage still protects user-visible behavior.
+Use before implementation to define focused validation conditions, or after
+implementation to assess technical risk coverage. Pair with
+`security-review`, `data-integrity-review`, `migration-review`,
+`concurrency-review`, or `performance-review` when those risks are material.
+Pair with `blackbox-risk-based-test` to ensure technical coverage still
+protects user-visible behavior.
