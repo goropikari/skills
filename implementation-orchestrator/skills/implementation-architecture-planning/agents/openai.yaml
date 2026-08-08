@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implementation architecture-planning"
+  short_description: "Internal workflow component for orchestrator"
+  default_prompt: "Use this component as directed by implementation-orchestrator."

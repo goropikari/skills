@@ -5,6 +5,7 @@ from pathlib import Path
 
 SCRIPT = (
     Path(__file__).resolve().parents[1]
+    / "implementation"
     / "dw-phase-tournament-flow"
     / "scripts"
     / "workflow.py"

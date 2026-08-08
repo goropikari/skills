@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implementation Acceptance Harness"
+  short_description: "Freeze black-box acceptance criteria before implementation"
+  default_prompt: "Use this internal component when implementation needs a frozen consumer-facing acceptance harness."

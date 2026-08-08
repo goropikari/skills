@@ -4,7 +4,13 @@ import sys
 from pathlib import Path
 
 
-SCRIPT = Path(__file__).parents[1] / "acceptance-driven-app/scripts/workflow.py"
+SCRIPT = (
+    Path(__file__).parents[1]
+    / "implementation"
+    / "acceptance-driven-app"
+    / "scripts"
+    / "workflow.py"
+)
 
 
 def run(tmp_path, *args):

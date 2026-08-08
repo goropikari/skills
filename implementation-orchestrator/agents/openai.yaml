@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implementation Orchestrator"
+  short_description: "Choose and run the safest implementation workflow"
+  default_prompt: "Use $implementation-orchestrator to analyze this change, select the appropriate implementation route, and carry it through verification."

@@ -2,11 +2,15 @@
 
 ## Project Structure & Module Organization
 
-This repository contains reusable Agent Skills. Each active skill lives in a
-top-level directory and normally has a `SKILL.md`; some also contain
-`agents/openai.yaml`, `scripts/`, or skill-specific reference files. Python
-workflow implementations are primarily under `dw-phase*/scripts/`, with
-their focused tests under `dw-phase/tests/` or the repository-level `tests/`.
+This repository contains reusable Agent Skills. Each active skill normally has
+a `SKILL.md`; the implementation route selector lives under
+`implementation-orchestrator/`, implementation and development-flow skills
+live under `implementation/`, and review skills live under `reviews/`. Some
+also contain `agents/openai.yaml`, `scripts/`, or skill-specific reference
+files.
+Python workflow implementations are primarily under
+`implementation/dw-phase*/scripts/`, with their focused tests under
+`implementation/dw-phase/tests/` or the repository-level `tests/`.
 The `deprecated/` tree is historical and is excluded from the Makefile’s
 active skill set. Keep new shared documentation and tooling at the repository
 root only when it applies across skills.

@@ -4,19 +4,27 @@ Codex と Claude Code で利用できる Agent Skill のコレクションです
 
 ## 収録している skill
 
-### 開発フロー・要件定義
+### 実装・開発フロー
 
-| Skill                                                                     | 用途                                                                         |
-| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| [`acceptance-driven-app`](acceptance-driven-app/)                         | Web/API アプリを受け入れ条件駆動で実装し、PR の証跡まで管理する              |
-| [`dw-phase`](dw-phase/)                                                   | phase/subphase ツリーを使って機能やレイヤーを段階的に開発する                |
-| [`dw-phase-parallel-light`](dw-phase-parallel-light/)                     | phase を並列に一括実装し、自己レビューとテストまで実行する                   |
-| [`dw-phase-tournament-flow`](dw-phase-tournament-flow/)                   | リスクベーステスト、並列実装、実装トーナメント、レビュー、最終検証を統合する |
-| [`grill-me`](grill-me/)                                                   | 計画や設計を一問ずつ掘り下げ、共通理解を作る                                 |
-| [`prd-maker`](prd-maker/)                                                 | 曖昧なアイデアから日本語の PRD を作成する                                    |
-| [`prd-to-issue`](prd-to-issue/)                                           | 完成した PRD を GitHub issue に変換する                                      |
-| [`multi-agent-tounament-development`](multi-agent-tounament-development/) | 複数 agent の実装を worktree 上で比較し、採用案を検証する                    |
-| [`session-learning`](session-learning/)                                   | セッションやデバッグ履歴から再利用可能な教訓を抽出する                       |
+| Skill                                                                                    | 用途                                                                         |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [`implementation-orchestrator`](implementation-orchestrator/)                            | 変更内容・リスク・不確実性を分析し、適切な実装 workflow を選択・実行する     |
+| [`acceptance-driven-app`](implementation/acceptance-driven-app/)                         | Web/API アプリを受け入れ条件駆動で実装し、PR の証跡まで管理する              |
+| [`acceptance-harness`](implementation/acceptance-harness/)                               | 実装前に実行可能な black-box acceptance harness を作成・凍結する             |
+| [`dw-phase`](implementation/dw-phase/)                                                   | phase/subphase ツリーを使って機能やレイヤーを段階的に開発する                |
+| [`dw-phase-parallel-light`](implementation/dw-phase-parallel-light/)                     | phase を並列に一括実装し、自己レビューとテストまで実行する                   |
+| [`dw-phase-tournament-flow`](implementation/dw-phase-tournament-flow/)                   | リスクベーステスト、並列実装、実装トーナメント、レビュー、最終検証を統合する |
+| [`multi-agent-tounament-development`](implementation/multi-agent-tounament-development/) | 複数 agent の実装を worktree 上で比較し、採用案を検証する                    |
+| [`new-app-engineering-workflow`](implementation/new-app-engineering-workflow/)           | 新規アプリの要件、設計、実装、検証を段階的に進める                           |
+
+### 要件定義・計画
+
+| Skill                                   | 用途                                                   |
+| --------------------------------------- | ------------------------------------------------------ |
+| [`grill-me`](grill-me/)                 | 計画や設計を一問ずつ掘り下げ、共通理解を作る           |
+| [`prd-maker`](prd-maker/)               | 曖昧なアイデアから日本語の PRD を作成する              |
+| [`prd-to-issue`](prd-to-issue/)         | 完成した PRD を GitHub issue に変換する                |
+| [`session-learning`](session-learning/) | セッションやデバッグ履歴から再利用可能な教訓を抽出する |
 
 ### テスト設計
 
@@ -88,7 +96,7 @@ active skill が `~/.claude/skills` と `~/.agents/skills` にコピーされま
 make link
 ```
 
-インストール対象は `deprecated/` を除く、各ディレクトリの `SKILL.md` から自動的に決まります。
+インストール対象は `deprecated/` を除く、トップレベル、`implementation/`、`reviews/` 配下の `SKILL.md` から自動的に決まります。
 
 コミット時にフォーマットを確認する hook を有効にするには、次を一度実行します。
 
@@ -150,7 +158,9 @@ make lint
 
 ```text
 .
-├── <skill-name>/SKILL.md       # 開発フロー・テスト設計などの skill
+├── <skill-name>/SKILL.md       # 共通系 skill
+├── implementation-orchestrator/ # 実装方法を選択する orchestrator と内部 skill 群
+├── implementation/<skill-name>/ # 実装・開発フロー系 skill
 ├── reviews/<skill-name>/       # コードレビュー系 skill
 ├── <skill-name>/agents/        # agent 用メタデータ（必要な skill のみ）
 ├── <skill-name>/scripts/       # 実行ロジック（必要な skill のみ）
