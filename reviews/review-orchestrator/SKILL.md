@@ -60,22 +60,22 @@ description: Select and coordinate the smallest effective set of review skills b
 
 ## Routing Matrix
 
-| 条件                                                                     | 実行する review             |
-| ------------------------------------------------------------------------ | --------------------------- |
-| 既存の review report / findings が入力された                             | review-finding-validator    |
-| 複数 reviewer の結果を統合する                                           | review-calibration          |
-| 呼び出し元、依存サービス、設定、cache、event に影響する差分              | change-impact-review        |
-| schema、migration、repository、永続化、backfill、data conversion         | data-integrity-review       |
-| login、permission、tenant boundary、secret、PII、外部入力                | security-review             |
-| goroutine、thread、async、queue、lock、atomic、callback、shared state    | concurrency-review          |
-| HTTP/RPC、event、message、CLI、config、schema の consumer-facing change  | api-compatibility-review    |
-| テストコード、fixture、mock、assertion、flaky 対策を変更                 | test-quality-review         |
-| metrics、logs、tracing、health check、alert、SLO、dashboard              | observability-review        |
-| deploy、rollback、feature flag、migration rollout、runbook、release plan | release-readiness-review    |
-| プロダクト挙動・要件・受入条件の検証が中心                               | ta-review                   |
-| 技術リスク・テスト戦略・非機能リスクが中心                               | tta-review                  |
-| 設計、責務、結合、変更容易性、テスト容易性が中心                         | code-smell-review または jr |
-| コメント・docstring・GoDoc が変更対象                                    | comment-review-orchestrator |
+| 条件                                                                     | 実行する review                                     |
+| ------------------------------------------------------------------------ | --------------------------------------------------- |
+| 既存の review report / findings が入力された                             | review-finding-validator                            |
+| 複数 reviewer の結果を統合する                                           | review-calibration                                  |
+| 呼び出し元、依存サービス、設定、cache、event に影響する差分              | change-impact-review                                |
+| schema、migration、repository、永続化、backfill、data conversion         | data-integrity-review                               |
+| login、permission、tenant boundary、secret、PII、外部入力                | security-review                                     |
+| goroutine、thread、async、queue、lock、atomic、callback、shared state    | concurrency-review                                  |
+| HTTP/RPC、event、message、CLI、config、schema の consumer-facing change  | api-compatibility-review                            |
+| テストコード、fixture、mock、assertion、flaky 対策を変更                 | test-quality-review                                 |
+| metrics、logs、tracing、health check、alert、SLO、dashboard              | observability-review                                |
+| deploy、rollback、feature flag、migration rollout、runbook、release plan | release-readiness-review                            |
+| プロダクト挙動・要件・受入条件の検証が中心                               | ta-review                                           |
+| 技術リスク・テスト戦略・非機能リスクが中心                               | tta-review                                          |
+| 設計、責務、結合、変更容易性、テスト容易性が中心                         | code-smell-review または engineering-compass-review |
+| コメント・docstring・GoDoc が変更対象                                    | comment-review-orchestrator                         |
 
 ## Selection Details
 
@@ -97,7 +97,7 @@ description: Select and coordinate the smallest effective set of review skills b
 
 - ta-review は利用者・要件・機能挙動に限定する。
 - tta-review は技術的テストリスクと非機能リスクに限定する。
-- code-smell-review / jr は設計・保守性に限定する。
+- code-smell-review / engineering-compass-review は設計・保守性に限定する。
 - test-quality-review はテストコードの検出力・隔離性に限定する。
 - セキュリティ、データ整合性、互換性の finding を一般的な smell として重複報告しない。
 - コメント関連は comment-review-orchestrator に委譲する。

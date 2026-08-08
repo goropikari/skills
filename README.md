@@ -25,30 +25,36 @@ Codex と Claude Code で利用できる Agent Skill のコレクションです
 | [`blackbox-risk-based-test`](blackbox-risk-based-test/) | 外部から観測できる振る舞い、要件、API、UI をもとにリスクベーステストを設計する       |
 | [`whitebox-risk-based-test`](whitebox-risk-based-test/) | ソースコード、制御フロー、データフロー、依存関係をもとにリスクベーステストを設計する |
 
+### エンジニアリング原則
+
+| Skill                                         | 用途                                                                     |
+| --------------------------------------------- | ------------------------------------------------------------------------ |
+| [`engineering-compass`](engineering-compass/) | 可読性、理解しやすさ、テスト容易性、疎結合を重視する個人の設計・実装原則 |
+
 ### コードレビュー
 
-| Skill                                                                 | 用途                                                           |
-| --------------------------------------------------------------------- | -------------------------------------------------------------- |
-| [`review-orchestrator`](reviews/review-orchestrator/)                 | 変更内容とリスクに応じて、実行すべきレビューを選定・調整する   |
-| [`api-compatibility-review`](reviews/api-compatibility-review/)       | API、event、CLI、設定、schema の後方互換性を確認する           |
-| [`architecture-review`](reviews/architecture-review/)                 | 責務、境界、依存方向、結合、拡張性を確認する                   |
-| [`change-impact-review`](reviews/change-impact-review/)               | 変更が呼び出し元、データ、API、運用に与える影響を追跡する      |
-| [`code-smell-review`](reviews/code-smell-review/)                     | 設計、責務、結合、変更容易性、テスト容易性の問題を確認する     |
-| [`code-comment-review`](reviews/code-comment-review/)                 | コメント、docstring、TODO の正確性と保守性を確認する           |
-| [`comment-contract-reviewer`](reviews/comment-contract-reviewer/)     | コメントが公開契約だけを説明しているか確認する                 |
-| [`comment-review-orchestrator`](reviews/comment-review-orchestrator/) | コメントレビューを専門 reviewer と連携して統合する             |
-| [`concurrency-review`](reviews/concurrency-review/)                   | race、deadlock、leak、cancel、shutdown の問題を確認する        |
-| [`data-integrity-review`](reviews/data-integrity-review/)             | DB、migration、永続化、復旧時のデータ整合性を確認する          |
-| [`dependency-review`](reviews/dependency-review/)                     | 脆弱性、ライセンス、保守性、供給網リスクを確認する             |
-| [`gocomment-contract-review`](reviews/gocomment-contract-review/)     | git diff の Go コメントを抽出して契約レビューする              |
-| [`jr`](reviews/jr/)                                                   | 可読性、理解しやすさ、テスト容易性、疎結合を確認する           |
-| [`security-review`](reviews/security-review/)                         | 認証・認可、入力、秘密情報、プライバシー、悪用経路を確認する   |
-| [`test-quality-review`](reviews/test-quality-review/)                 | テストの検出力、脆さ、flakiness、順序依存を確認する            |
-| [`ta-review`](reviews/ta-review/)                                     | テスト分析の観点から要件、受け入れ条件、ユーザー価値を確認する |
-| [`tta-review`](reviews/tta-review/)                                   | 技術テスト分析の観点からテスト容易性と非機能リスクを確認する   |
-| [`review-finding-validator`](reviews/review-finding-validator/)       | 既存のレビュー指摘をソース、テスト、仕様に照らして検証する     |
-| [`review-calibration`](reviews/review-calibration/)                   | 複数 reviewer の指摘を正規化・重複排除・統合する               |
-| [`coderabbit-review`](reviews/coderabbit-review/)                     | CodeRabbit のレビューを複数回実行し、指摘の安定性を評価する    |
+| Skill                                                                 | 用途                                                                                 |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| [`review-orchestrator`](reviews/review-orchestrator/)                 | 変更内容とリスクに応じて、実行すべきレビューを選定・調整する                         |
+| [`api-compatibility-review`](reviews/api-compatibility-review/)       | API、event、CLI、設定、schema の後方互換性を確認する                                 |
+| [`architecture-review`](reviews/architecture-review/)                 | 責務、境界、依存方向、結合、拡張性を確認する                                         |
+| [`change-impact-review`](reviews/change-impact-review/)               | 変更が呼び出し元、データ、API、運用に与える影響を追跡する                            |
+| [`code-smell-review`](reviews/code-smell-review/)                     | 設計、責務、結合、変更容易性、テスト容易性の問題を確認する                           |
+| [`code-comment-review`](reviews/code-comment-review/)                 | コメント、docstring、TODO の正確性と保守性を確認する                                 |
+| [`comment-contract-reviewer`](reviews/comment-contract-reviewer/)     | コメントが公開契約だけを説明しているか確認する                                       |
+| [`comment-review-orchestrator`](reviews/comment-review-orchestrator/) | コメントレビューを専門 reviewer と連携して統合する                                   |
+| [`concurrency-review`](reviews/concurrency-review/)                   | race、deadlock、leak、cancel、shutdown の問題を確認する                              |
+| [`data-integrity-review`](reviews/data-integrity-review/)             | DB、migration、永続化、復旧時のデータ整合性を確認する                                |
+| [`dependency-review`](reviews/dependency-review/)                     | 脆弱性、ライセンス、保守性、供給網リスクを確認する                                   |
+| [`gocomment-contract-review`](reviews/gocomment-contract-review/)     | git diff の Go コメントを抽出して契約レビューする                                    |
+| [`engineering-compass-review`](reviews/engineering-compass-review/)   | Engineering Compass 原則に基づき可読性、理解しやすさ、テスト容易性、疎結合を確認する |
+| [`security-review`](reviews/security-review/)                         | 認証・認可、入力、秘密情報、プライバシー、悪用経路を確認する                         |
+| [`test-quality-review`](reviews/test-quality-review/)                 | テストの検出力、脆さ、flakiness、順序依存を確認する                                  |
+| [`ta-review`](reviews/ta-review/)                                     | テスト分析の観点から要件、受け入れ条件、ユーザー価値を確認する                       |
+| [`tta-review`](reviews/tta-review/)                                   | 技術テスト分析の観点からテスト容易性と非機能リスクを確認する                         |
+| [`review-finding-validator`](reviews/review-finding-validator/)       | 既存のレビュー指摘をソース、テスト、仕様に照らして検証する                           |
+| [`review-calibration`](reviews/review-calibration/)                   | 複数 reviewer の指摘を正規化・重複排除・統合する                                     |
+| [`coderabbit-review`](reviews/coderabbit-review/)                     | CodeRabbit のレビューを複数回実行し、指摘の安定性を評価する                          |
 
 ### 品質・運用レビュー
 
