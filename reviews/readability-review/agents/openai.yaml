@@ -1,0 +1,4 @@
+interface:
+  display_name: "Readability Review"
+  short_description: "Score code readability with evidence"
+  default_prompt: "Use $readability-review to assess this code or diff objectively and cite evidence for every score."
