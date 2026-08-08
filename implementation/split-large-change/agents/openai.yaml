@@ -1,0 +1,4 @@
+interface:
+  display_name: "Split Large Changes"
+  short_description: "Divide oversized AI changes into responsibility-based PRs"
+  default_prompt: "Use $split-large-change to decompose this oversized AI-generated change into reviewable, responsibility-based branches and PRs."
