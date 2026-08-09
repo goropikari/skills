@@ -1,0 +1,4 @@
+interface:
+  display_name: "Coding Quality Gate"
+  short_description: "Enforce repository coding quality baselines after implementation"
+  default_prompt: "Automatically run the repository coding quality gate: inspect the baseline, execute deterministic checks, perform semantic review, repair failures, and record the result without asking the user to run routine commands."

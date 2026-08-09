@@ -1,0 +1,4 @@
+interface:
+  display_name: "Repository Quality Baseline"
+  short_description: "Initialize and update repository quality standards and checks"
+  default_prompt: "Inspect this repository and create or update its versioned quality baseline, including must-pass checks, critical defects, and state files."

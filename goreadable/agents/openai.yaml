@@ -1,0 +1,4 @@
+interface:
+  display_name: "Goreadable"
+  short_description: "Prioritize Go readability review candidates"
+  default_prompt: "Use $goreadable to identify and prioritize Go code that needs a readability review."

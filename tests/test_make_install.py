@@ -38,9 +38,13 @@ def test_install_removes_only_stale_managed_skills(tmp_path: Path) -> None:
     assert not stale_skill.exists()
     assert unmanaged_skill.is_dir()
     assert (managed_root / "implementation-orchestrator").is_dir()
+    assert (managed_root / "coding-quality-gate").is_dir()
+    assert (managed_root / "repository-quality-baseline").is_dir()
     state_names = (managed_root / STATE_FILE).read_text(encoding="utf-8").splitlines()
     assert "removed-skill" not in state_names
     assert "implementation-orchestrator" in state_names
+    assert "coding-quality-gate" in state_names
+    assert "repository-quality-baseline" in state_names
 
 
 def test_install_does_not_remove_existing_paths_without_state(tmp_path: Path) -> None:

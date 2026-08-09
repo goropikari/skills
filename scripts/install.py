@@ -17,6 +17,7 @@ def active_skill_directories(repository_root: Path) -> list[Path]:
     candidates = (
         *repository_root.glob("*/SKILL.md"),
         *repository_root.glob("implementation/*/SKILL.md"),
+        *repository_root.glob("quality/*/SKILL.md"),
         *repository_root.glob("reviews/*/SKILL.md"),
     )
     return sorted(
