@@ -15,6 +15,9 @@ The `deprecated/` tree is historical and is excluded from the Makefile’s
 active skill set. Keep new shared documentation and tooling at the repository
 root only when it applies across skills.
 
+When creating a new skill or updating an existing skill, update that skill’s
+`VERSION` file as part of the same change.
+
 ## Build, Test, and Development Commands
 
 - `python3 -m pytest` — run the Python test suite.

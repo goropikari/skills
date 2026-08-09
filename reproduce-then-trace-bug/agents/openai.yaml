@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reproduce Then Trace Bug"
+  short_description: "Reproduce, inspect logs, then trace the cause"
+  default_prompt: "Use $reproduce-then-trace-bug to investigate this bug in the order: reproduce it, inspect logs, then locate the code cause."

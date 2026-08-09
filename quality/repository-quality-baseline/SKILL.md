@@ -1,11 +1,35 @@
 ---
 name: repository-quality-baseline
-description: Initialize, inspect, and update a repository's versioned coding-quality baseline and quality state by applying named repository-analysis skills, with optional ask devin or graphify support. Use when starting work in an unfamiliar repository, when a repository has no quality contract, when build/test/lint expectations change, or when the team wants to record a new baseline after repeated quality feedback.
+description: Instantiate and version a repository-specific quality model and quality state by selecting factors, measures, instruments, thresholds, and required checks. Use when starting work in an unfamiliar repository, when a repository has no quality contract, when quality expectations change, or when repeated assessment evidence requires a baseline revision.
 ---
 
 # Repository Quality Baseline
 
-Create a small, explicit quality contract in the repository so coding agents can evaluate work against local expectations instead of generic coding advice.
+Instantiate `quality-modeling` for one repository. Create a small, explicit
+quality contract so agents can evaluate work against local expectations instead
+of generic coding advice. The baseline is the model instance and policy; it is
+not the generic quality taxonomy and it is not the current assessment result.
+
+## Three-layer quality system
+
+Use the following ownership boundaries:
+
+```text
+quality-modeling
+  generic characteristics → factors → measures → instruments → evidence
+        ↓ select and calibrate
+  repository-quality-baseline
+  GQM selection, benchmark calibration, thresholds, rating, aggregation,
+  severity, weights, exceptions
+        ↓ execute
+quality-assessment
+  current evidence → factor statuses → gate decision → state history
+```
+
+Invoke `$quality-modeling` when a factor or measure needs to be designed or
+revised. During baseline initialization, use its vocabulary and record the
+selected model instance under `quality_model` in `baseline.json`. Do not make
+the baseline depend on a universal score or copy every available factor.
 
 ## Analysis skill set
 
@@ -49,7 +73,9 @@ Keep these files under `.quality/` at the repository root:
 - `state.json`: latest gate result, check history, defects, and baseline version used. Update it after a gate run; do not use it as the quality contract.
 - `README.md`: short human orientation generated only when the directory is initialized.
 
-Read [schema.md](references/schema.md) before changing the file shape.
+Read [schema.md](references/schema.md) before changing the file shape. Keep
+generic factor definitions in the model Skill or its references; keep
+repository-specific applicability and policy in `baseline.json`.
 
 Before adding a rule, classify whether it is mechanically observable, semantically interpretable, or both. Use a tool for stable pass/fail oracles; use the named review Skills for intent, architecture, risk, and trade-offs. See [tool-vs-ai.md](../coding-quality-gate/references/tool-vs-ai.md) for the shared boundary and output contract.
 
@@ -82,9 +108,16 @@ Do not create a custom tool merely to encode a subjective style preference. If t
    Use `--force` only when the user explicitly asks to replace an existing baseline. The default is non-destructive and refuses to overwrite `baseline.json` or `state.json`.
    Execute this command automatically as the Agent; do not ask the user to copy or run it.
 3. Review every discovered command. Remove commands that are not valid and add repository-specific build, typecheck, lint, unit, integration, security, or packaging checks. If an important rule still lacks a reliable check, create a repository-specific inspection tool under **Repository-specific inspection tools**, test it, and register it before declaring the baseline complete.
-4. Define Must Quality as pass/fail rules. At minimum cover requested behavior, build/type validity where applicable, regression protection, tests appropriate to the change, repository conventions, and critical security defects.
-5. Separate Performance Quality from Must Quality. Do not make style preferences a blocking gate unless the repository already treats them as required.
-6. Record assumptions in `baseline.json`, commit the baseline when the repository workflow permits it, and never claim that an unverified command is passing.
+4. For each selected measurement family, record its GQM goal/question/metric
+   relationship. Derive thresholds from documented expert sources and, where
+   useful, a comparable benchmark population. Record distribution, quantile,
+   rationale, date, and confidence; never present an uncalibrated threshold as
+   an objective fact.
+5. Select rating functions and aggregation rules. Preserve leaf-level values
+   and define the drill-down path before allowing system-level aggregation.
+6. Define Must Quality as pass/fail rules. At minimum cover requested behavior, build/type validity where applicable, regression protection, tests appropriate to the change, repository conventions, and critical security defects.
+7. Separate Performance Quality from Must Quality. Do not make style preferences a blocking gate unless the repository already treats them as required.
+8. Record assumptions in `baseline.json`, commit the baseline when the repository workflow permits it, and never claim that an unverified command is passing.
 
 Routine baseline inspection and read-only Python helpers are Agent-owned actions. Ask the user only for policy decisions, external authenticated access, destructive changes, or an unresolved environment blocker.
 
@@ -99,9 +132,12 @@ Update the baseline only when evidence shows that the repository's expected norm
 
 Do not weaken a Must Quality rule merely to make a current change pass. Repair the change or obtain an explicit policy decision from the user.
 
-## Handoff to the gate
+## Handoff to assessment and gate
 
-After initialization or update, invoke `$coding-quality-gate` for implementation work. The gate must use the exact `mechanical_checks` in `baseline.json`, then record its result in `state.json`.
+After initialization or update, invoke `$quality-assessment` for assessment
+work. `$coding-quality-gate` may orchestrate that assessment and its bundled
+mechanical runner, but neither the gate nor an implementation Skill may
+redefine the model or baseline during a task.
 
 ## Compose with implementation skills
 
@@ -112,7 +148,7 @@ $repository-quality-baseline  (once per repository or when the baseline changes)
         ↓
 $<goropikari implementation skill>  (plan and implement the task)
         ↓
-$coding-quality-gate  (mechanical checks, semantic review, repair loop)
+$quality-assessment / $coding-quality-gate  (evidence, evaluation, repair loop)
         ↓
 Deliver only after PASS or an explicitly accepted exception
 ```

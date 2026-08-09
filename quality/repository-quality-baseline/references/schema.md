@@ -11,6 +11,40 @@ Required top-level fields:
   "schema_version": 1,
   "baseline_version": "1.0.0",
   "repository": { "root": "." },
+  "quality_model": {
+    "source": "quality-modeling",
+    "version": "1.0.0",
+    "characteristics": ["maintainability", "reliability"],
+    "factors": [
+      {
+        "id": "maintainability.responsibility_separation",
+        "applicable": true,
+        "required": true,
+        "severity": "major",
+        "gqm": {
+          "goal": "Estimate maintainability risk in source code from the developer viewpoint.",
+          "questions": ["Where is maintainability risk concentrated?"],
+          "metrics": ["cyclomatic_complexity"]
+        },
+        "measures": ["single_responsibility_review", "cyclomatic_complexity"],
+        "rating": {
+          "method": "threshold",
+          "levels": ["very_low", "low", "medium", "high", "very_high"]
+        },
+        "thresholds": {
+          "source": "benchmark-2026-01",
+          "population": "comparable production Java services",
+          "quantiles": [0.95, 0.99, 0.995, 0.999],
+          "confidence": "medium"
+        },
+        "aggregation": {
+          "entity_hierarchy": ["method", "class", "file", "module", "system"],
+          "method": "logarithmic_risk_emphasis",
+          "retain_worst_entities": 10
+        }
+      }
+    ]
+  },
   "repository_tools": [
     {
       "id": "api-contract",

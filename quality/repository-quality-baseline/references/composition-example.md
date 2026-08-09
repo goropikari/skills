@@ -9,7 +9,10 @@ User: Initialize the repository quality baseline.
 Agent: $repository-quality-baseline
 ```
 
-Review `.quality/baseline.json`, especially discovered commands, `must_quality`, and `analysis_skills`. Correct assumptions before implementation begins.
+Use `$quality-modeling` to define or select the generic quality factors first.
+Then initialize the repository baseline and review `.quality/baseline.json`,
+especially `quality_model`, discovered commands, `must_quality`, and
+`analysis_skills`. Correct assumptions before implementation begins.
 
 ## Feature or bug-fix task
 
@@ -17,10 +20,10 @@ Review `.quality/baseline.json`, especially discovered commands, `must_quality`,
 User: Implement <task>.
 Agent: $<implementation-skill>
       Use the repository's acceptance criteria and `.quality/baseline.json`.
-      After implementation, invoke $coding-quality-gate.
+      After implementation, invoke $quality-assessment or $coding-quality-gate.
 ```
 
-The implementation Skill should not spend tokens rereading the whole repository quality policy. Give it the baseline path and the task-specific requirements. The Agent automatically invokes the gate runner; the implementation Skill does not wait for the human to run commands. The gate runner handles build, typecheck, lint, tests, and repository-specific tools; the semantic reviewer receives the bounded context packet.
+The implementation Skill should not spend tokens rereading the whole repository quality policy. Give it the baseline path and the task-specific requirements. The assessment/gate handles build, typecheck, lint, tests, repository-specific tools, and semantic review; the semantic reviewer receives the bounded context packet.
 
 ## Repair loop
 

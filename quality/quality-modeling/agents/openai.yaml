@@ -1,0 +1,4 @@
+interface:
+  display_name: "Quality Modeling"
+  short_description: "Design explainable software quality models"
+  default_prompt: "Use $quality-modeling to define quality factors, measures, instruments, and evidence for a software system."
