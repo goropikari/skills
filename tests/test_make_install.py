@@ -7,6 +7,22 @@ REPOSITORY_ROOT = Path(__file__).parents[1]
 STATE_FILE = ".skills-install-state"
 
 
+def active_skill_directories() -> list[Path]:
+    candidates = (
+        *REPOSITORY_ROOT.glob("*/SKILL.md"),
+        *REPOSITORY_ROOT.glob("implementation/*/SKILL.md"),
+        *REPOSITORY_ROOT.glob("quality/*/SKILL.md"),
+        *REPOSITORY_ROOT.glob("reviews/*/SKILL.md"),
+    )
+    return sorted(
+        {
+            skill_file.parent.relative_to(REPOSITORY_ROOT)
+            for skill_file in candidates
+            if "deprecated" not in skill_file.relative_to(REPOSITORY_ROOT).parts
+        }
+    )
+
+
 def run_make_install(home: Path) -> None:
     environment = os.environ.copy()
     environment["HOME"] = str(home)
@@ -40,6 +56,9 @@ def test_install_removes_only_stale_managed_skills(tmp_path: Path) -> None:
     assert (managed_root / "implementation-orchestrator").is_dir()
     assert (managed_root / "coding-quality-gate").is_dir()
     assert (managed_root / "repository-quality-baseline").is_dir()
+    for skill_directory in active_skill_directories():
+        installed_skill = managed_root / skill_directory.name
+        assert (installed_skill / "VERSION").read_text(encoding="utf-8") == "0.1.0\n"
     state_names = (managed_root / STATE_FILE).read_text(encoding="utf-8").splitlines()
     assert "removed-skill" not in state_names
     assert "implementation-orchestrator" in state_names
