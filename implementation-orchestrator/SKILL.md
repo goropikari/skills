@@ -91,6 +91,10 @@ calls for readability, testability, or loose coupling.
   and self-review.
 - For high-risk or uncertain work, compose a plan with the relevant allowed
   reviewers before implementation.
+- When implementing or changing complex logic, check whether distinct
+  responsibilities or reasons to change are mixed together. Extract a
+  clearly named helper only when it hides detail and makes the caller's
+  control flow easier to follow; do not split code by line count alone.
 - Treat repository-specific conventions as authoritative when they differ from
   the default workflow or size guidance here.
 - When splitting work, make each stage independently reviewable and testable;

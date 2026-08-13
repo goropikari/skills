@@ -23,6 +23,20 @@ Apply the following principles when evaluating or proposing code, designs, imple
 - Treat a structure whose responsibility cannot be understood without reading its implementation as a problem.
 - When code uses the name of a common tool or concept, make its behavior match the reader's intuition for that name.
 
+## Responsibility Boundaries
+
+- When a function mixes distinct reasons to change, abstraction levels, or
+  independently explainable operations, consider a named helper function or a
+  dedicated type or module.
+- Make a helper hide implementation detail from its caller. Its name must
+  explain the operation without merely restating a nearby comment.
+- Keep a short, linear operation together when extracting it would only force
+  readers to jump between functions.
+- Do not extract a helper when doing so increases the state or arguments that
+  readers must trace, or when the resulting name cannot express a clear
+  responsibility.
+- Do not use line count alone as a reason to split code.
+
 ## Comment Policy
 
 - Write comments for future callers, not as a walkthrough of the current implementation.
