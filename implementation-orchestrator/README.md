@@ -51,24 +51,21 @@ decision gate、実装手順を記録します。
 ## 利用する skill
 
 必要なものだけを選びます。すべての reviewer を常に実行するわけではありません。
+review 系の観点が必要な場合は、公開 entry point である
+`review-orchestrator` を選びます。個別 reviewer はその内部 component として
+選定されます。
 
-- 要件: `requirements-review`、`prd-maker`、`grill-me`
-- テスト設計: `blackbox-risk-based-test`、`whitebox-risk-based-test`、
-  `ta-review`、`tta-review`、`test-quality-review`
-- 設計・影響: `architecture-review`、`change-impact-review`、
-  `engineering-compass-review`、`readability-review`
-- リスク: `security-review`、`privacy-review`、`migration-review`、
-  `data-integrity-review`、`api-compatibility-review`、`concurrency-review`
-- 運用・完了確認: `observability-review`、`release-readiness-review`、
-  `prd-acceptance-review`
+- 要件・計画: `prd-maker`、`grill-me`、`review-orchestrator`
+- テスト設計: `blackbox-risk-based-test`、`whitebox-risk-based-test`
+- 設計・影響・リスク・運用レビュー: `review-orchestrator`
 
 外部 API、CLI、library、service、破壊的変更、候補実装の比較では、内部 component
 `implementation-acceptance-harness` を使い、実装前に black-box の受入条件を凍結します。
 
 ## 制約
 
-リポジトリの `implementation/` 配下にある既存 skill は使用しません。既存の実装 workflow
-を選択するのではなく、orchestrator 自身が計画に沿って実装します。
+インストール済みの公開 skill だけを選び、review は
+`review-orchestrator` を通して依頼します。orchestrator 自身が計画に沿って実装します。
 
 repository 固有の規約は、この skill の既定ルールより優先されます。
 

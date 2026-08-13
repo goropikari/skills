@@ -12,8 +12,6 @@ description: >-
 
 Analyze the requested change, compose an implementation plan from allowed
 repository skills, and carry the work through implementation and verification.
-The repository's `implementation/` directory is explicitly out of bounds:
-never use, read, invoke, or select a skill from that directory.
 
 ## Operating contract
 
@@ -27,9 +25,9 @@ never use, read, invoke, or select a skill from that directory.
    and produce a route decision covering request type, repository maturity,
    scope, observable behavior, risk, dependencies, and validation needs.
 3. Read [route-selection.md](references/route-selection.md) and choose the
-   smallest safe plan. Select only allowed top-level or `reviews/` skills as
-   supporting activities. Do not use a skill from the repository's
-   `implementation/` directory.
+   smallest safe plan. Select only skills available in the current installation.
+   Request reviews through the public `review-orchestrator` entry point rather
+   than invoking its bundled reviewer components directly.
 4. Write `.implementation-orchestrator/implementation-plan.md` before
    changing product code. Use [implementation-plan-template.md](references/implementation-plan-template.md)
    and include selected skills, their order, expected outputs, decision gates,
@@ -71,24 +69,17 @@ never use, read, invoke, or select a skill from that directory.
 Use the smallest set that covers the change; do not invoke every reviewer by
 default.
 
-- Requirements: `requirements-review`, `prd-maker`, `grill-me`.
-- External behavior and test design: `blackbox-risk-based-test`,
-  `whitebox-risk-based-test`, `ta-review`, `tta-review`,
-  `test-quality-review`, `mutation-test-review`, and
-  `property-based-test-review`.
+- Requirements: `prd-maker`, `grill-me`, and `review-orchestrator` when a
+  requirements review is needed.
+- External behavior and test design: `blackbox-risk-based-test` and
+  `whitebox-risk-based-test`; request mutation or property-based test review
+  through `review-orchestrator` when appropriate.
 - Frozen black-box oracle: use the internal
   `implementation-acceptance-harness` component when the consumer-facing
   contract must be protected before implementation.
-- Design and impact: `architecture-review`, `change-impact-review`,
-  `engineering-compass-review`, `readability-review`, and `code-smell-review`.
-- Risk-specific review: `security-review`, `privacy-review`,
-  `data-integrity-review`, `migration-review`, `api-compatibility-review`,
-  `concurrency-review`, `performance-review`, and `accessibility-review`.
-- Operations and delivery evidence: `observability-review`,
-  `incident-readiness-review`, `release-readiness-review`, and
-  `prd-acceptance-review`.
-- Review coordination: `review-orchestrator`,
-  `review-finding-validator`, and `review-calibration`.
+- Review selection and coordination: `review-orchestrator`. It owns the
+  internal reviewers for design and impact, risk-specific, behavioral,
+  operational, and finding-calibration reviews.
 
 Use `engineering-compass` as a design principle when the user or repository
 calls for readability, testability, or loose coupling.

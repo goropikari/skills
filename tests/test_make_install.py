@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -10,9 +11,7 @@ STATE_FILE = ".skills-install-state"
 def active_skill_directories() -> list[Path]:
     candidates = (
         *REPOSITORY_ROOT.glob("*/SKILL.md"),
-        *REPOSITORY_ROOT.glob("implementation/*/SKILL.md"),
         *REPOSITORY_ROOT.glob("quality/*/SKILL.md"),
-        *REPOSITORY_ROOT.glob("reviews/*/SKILL.md"),
     )
     return sorted(
         {
@@ -40,12 +39,12 @@ def test_install_removes_only_stale_managed_skills(tmp_path: Path) -> None:
     run_make_install(tmp_path)
 
     managed_root = tmp_path / ".agents" / "skills"
-    stale_skill = managed_root / "removed-skill"
+    stale_skill = managed_root / "security-review"
     unmanaged_skill = managed_root / "user-skill"
     stale_skill.mkdir()
     unmanaged_skill.mkdir()
     (managed_root / STATE_FILE).write_text(
-        (managed_root / STATE_FILE).read_text() + "removed-skill\n",
+        (managed_root / STATE_FILE).read_text() + "security-review\n",
         encoding="utf-8",
     )
 
@@ -58,12 +57,21 @@ def test_install_removes_only_stale_managed_skills(tmp_path: Path) -> None:
     assert (managed_root / "repository-quality-baseline").is_dir()
     for skill_directory in active_skill_directories():
         installed_skill = managed_root / skill_directory.name
-        assert (installed_skill / "VERSION").read_text(encoding="utf-8") == "0.1.0\n"
+        version = (installed_skill / "VERSION").read_text(encoding="utf-8").strip()
+        assert re.fullmatch(r"\d+\.\d+\.\d+", version)
     state_names = (managed_root / STATE_FILE).read_text(encoding="utf-8").splitlines()
-    assert "removed-skill" not in state_names
+    assert "security-review" not in state_names
     assert "implementation-orchestrator" in state_names
     assert "coding-quality-gate" in state_names
     assert "repository-quality-baseline" in state_names
+    assert "acceptance-harness" not in state_names
+    assert "acceptance-driven-app" not in state_names
+    assert "review-orchestrator" in state_names
+    assert "security-review" not in state_names
+    assert (
+        managed_root / "review-orchestrator" / "skills" / "security-review"
+    ).is_dir()
+    assert (managed_root / "review-orchestrator" / "skills" / "jr-review").is_dir()
 
 
 def test_install_does_not_remove_existing_paths_without_state(tmp_path: Path) -> None:

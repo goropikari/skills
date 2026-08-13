@@ -3,9 +3,8 @@ name: implementation-acceptance-harness
 description: >-
   Internal component for implementation-orchestrator: create and freeze an
   implementation-independent black-box acceptance harness for externally
-  observable, destructive, high-risk, or candidate-compared changes. Do not
-  invoke as a standalone workflow or read the repository's implementation/
-  skills.
+  observable, destructive, high-risk, or candidate-compared changes. Invoke
+  only through implementation-orchestrator, not as a standalone workflow.
 ---
 
 # Implementation Acceptance Harness
@@ -36,12 +35,17 @@ refactor with no changed observable behavior.
      "criteria": [
        {
          "id": "AC-001",
+         "required": true,
          "tags": ["consumer-entry"],
          "command": "...",
-         "expected": "..."
+         "expected": "...",
+         "test_path": "tests/acceptance/consumer_test.py"
        }
      ],
-     "immutable_paths": [],
+     "immutable_paths": [
+       ".implementation-orchestrator/acceptance-harness/manifest.json",
+       "tests/acceptance/consumer_test.py"
+     ],
      "base_revision": "..."
    }
    ```
@@ -49,10 +53,19 @@ refactor with no changed observable behavior.
 5. Add `module-identity`, `build-install`, and `consumer-entry` criteria when
    they apply. For destructive behavior, add a rejection/no-side-effect
    criterion.
-6. Freeze the harness before implementation. Record the current base revision
+6. Validate the planned harness:
+
+   ```bash
+   python3 "<orchestrator-dir>/scripts/validate_harness.py" \
+     --stage plan .implementation-orchestrator/acceptance-harness/manifest.json
+   ```
+
+7. Freeze the harness before implementation. Record the current base revision
    or an explicit dirty-worktree baseline, add manifest and test paths to
-   `immutable_paths`, and do not edit them while implementing candidates.
-7. Run every criterion against each candidate or the direct implementation.
+   `immutable_paths`, and do not edit them while implementing candidates. Run
+   the validator again with `--stage frozen --base <base-revision>` before
+   accepting an implementation.
+8. Run every criterion against each candidate or the direct implementation.
    Report `PASS`, `FAIL`, or `NOT RUN` with the exact command and observable
    result. A required `NOT RUN` blocks completion unless the user accepts the
    residual risk.
@@ -60,8 +73,6 @@ refactor with no changed observable behavior.
 ## Boundaries
 
 - Keep the harness implementation-independent and consumer-facing.
-- Do not copy or invoke any skill from the repository's `implementation/`
-  directory.
 - Do not treat a passing unit test that bypasses the consumer entry point as
   acceptance evidence.
 - Do not silently modify frozen criteria to make an implementation pass.

@@ -22,6 +22,17 @@ observable and independent of the implementation design.
    check and its observable oracle.
 5. Assumptions and open questions.
 
+Create `.implementation-orchestrator/evidence.json` using
+[`evidence-schema.md`](../../references/evidence-schema.md), then run:
+
+```bash
+python3 "<orchestrator-dir>/scripts/validate_evidence.py" \
+  --stage plan .implementation-orchestrator/evidence.json
+```
+
+The plan must name every required acceptance criterion, material risk, and
+selected check. Do not add final results during contract creation.
+
 For a public CLI, library, plugin, service, or installable artifact, include
 consumer-entry, module/package identity when applicable, and build/install
 criteria. If candidates will be compared, freeze the contract and prevent

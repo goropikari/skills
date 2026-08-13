@@ -31,7 +31,8 @@
 | ----- | ----- | ---------------- | --------------- |
 | 1     |       |                  |                 |
 
-Do not list or use skills from the repository's `implementation/` directory.
+List only skills available in the current installation. Use
+`review-orchestrator` rather than listing its bundled reviewer components.
 
 ## Acceptance and validation
 
@@ -50,5 +51,6 @@ Do not list or use skills from the repository's `implementation/` directory.
 ## Completion evidence
 
 - Required commands:
+- Evidence record: `.implementation-orchestrator/evidence.json`
 - Files or artifacts to inspect:
 - Residual risks:

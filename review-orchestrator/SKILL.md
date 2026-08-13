@@ -7,6 +7,14 @@ description: Select and coordinate the smallest effective set of review skills b
 
 変更の文脈に応じて必要な review skill だけを選び、実行順序・省略理由・統合方法を管理する。自分で全領域をレビューしない。
 
+## Internal reviewers
+
+個別 reviewer はこの skill の `skills/<review-name>/` 配下にある内部
+component であり、直接 install・直接起動する public skill ではない。選定した
+reviewer を実行する前に対応する `SKILL.md` を読み、そこで定義された対象範囲と
+手順に従う。ユーザーが個別 review を指定した場合も、`review-orchestrator` が
+その component を選択して実行する。
+
 ## Default Mode: Adversarial Review
 
 明示的な指定がない限り、すべての review を敵対的レビューとして実行する。これは作者や設計者を攻撃することではなく、変更が失敗すると仮定して反例を探すレビューである。

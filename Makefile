@@ -1,4 +1,4 @@
-SKILL_DIRS := $(sort $(filter-out deprecated/%,$(patsubst %/SKILL.md,%,$(wildcard */SKILL.md) $(wildcard implementation/*/SKILL.md) $(wildcard quality/*/SKILL.md) $(wildcard reviews/*/SKILL.md))))
+SKILL_DIRS := $(sort $(filter-out deprecated/%,$(patsubst %/SKILL.md,%,$(wildcard */SKILL.md) $(wildcard quality/*/SKILL.md))))
 TARGET_SKILL_ROOTS := $(HOME)/.claude/skills $(HOME)/.agents/skills
 PYTHON_FILES := $(shell find . -path './.git' -prune -o -path './deprecated' -prune -o -name '*.py' -print)
 

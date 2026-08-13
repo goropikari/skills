@@ -4,13 +4,14 @@
 
 This repository contains reusable Agent Skills. Each active skill normally has
 a `SKILL.md`; the implementation route selector lives under
-`implementation-orchestrator/`, implementation and development-flow skills
-live under `implementation/`, and review skills live under `reviews/`. Some
+`implementation-orchestrator/`, which owns the active implementation workflow
+and its internal components. The review entry point is root-level
+`review-orchestrator/`, with its individual reviewer components owned beneath
+that orchestrator. Some
 also contain `agents/openai.yaml`, `scripts/`, or skill-specific reference
 files.
-Python workflow implementations are primarily under
-`implementation/dw-phase*/scripts/`, with their focused tests under
-`implementation/dw-phase/tests/` or the repository-level `tests/`.
+Python validators and focused tests live with their owning active skill or
+under the repository-level `tests/`.
 The `deprecated/` tree is historical and is excluded from the Makefile’s
 active skill set. Keep new shared documentation and tooling at the repository
 root only when it applies across skills.

@@ -6,16 +6,10 @@ Codex と Claude Code で利用できる Agent Skill のコレクションです
 
 ### 実装・開発フロー
 
-| Skill                                                                                    | 用途                                                                         |
-| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| [`implementation-orchestrator`](implementation-orchestrator/)                            | 変更内容・リスク・不確実性を分析し、適切な実装 workflow を選択・実行する     |
-| [`acceptance-driven-app`](implementation/acceptance-driven-app/)                         | Web/API アプリを受け入れ条件駆動で実装し、PR の証跡まで管理する              |
-| [`acceptance-harness`](implementation/acceptance-harness/)                               | 実装前に実行可能な black-box acceptance harness を作成・凍結する             |
-| [`dw-phase`](implementation/dw-phase/)                                                   | phase/subphase ツリーを使って機能やレイヤーを段階的に開発する                |
-| [`dw-phase-parallel-light`](implementation/dw-phase-parallel-light/)                     | phase を並列に一括実装し、自己レビューとテストまで実行する                   |
-| [`dw-phase-tournament-flow`](implementation/dw-phase-tournament-flow/)                   | リスクベーステスト、並列実装、実装トーナメント、レビュー、最終検証を統合する |
-| [`multi-agent-tounament-development`](implementation/multi-agent-tounament-development/) | 複数 agent の実装を worktree 上で比較し、採用案を検証する                    |
-| [`new-app-engineering-workflow`](implementation/new-app-engineering-workflow/)           | 新規アプリの要件、設計、実装、検証を段階的に進める                           |
+| Skill                                                         | 用途                                                                     |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| [`implementation-orchestrator`](implementation-orchestrator/) | 変更内容・リスク・不確実性を分析し、適切な実装 workflow を選択・実行する |
+| [`agent-workflow-evals`](agent-workflow-evals/)               | 凍結済みblack-box oracleでagent workflowの実装成果物を継続評価する       |
 
 ### 要件定義・計画
 
@@ -33,6 +27,21 @@ Codex と Claude Code で利用できる Agent Skill のコレクションです
 | [`blackbox-risk-based-test`](blackbox-risk-based-test/) | 外部から観測できる振る舞い、要件、API、UI をもとにリスクベーステストを設計する       |
 | [`whitebox-risk-based-test`](whitebox-risk-based-test/) | ソースコード、制御フロー、データフロー、依存関係をもとにリスクベーステストを設計する |
 
+### バグ調査
+
+| Skill                                                   | 用途                                                         |
+| ------------------------------------------------------- | ------------------------------------------------------------ |
+| [`reproduce-then-trace-bug`](reproduce-then-trace-bug/) | 不具合を再現、ログ・実行時証拠の確認、原因追跡の順に調査する |
+
+### 品質管理
+
+| Skill                                                                 | 用途                                                                   |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| [`quality-modeling`](quality/quality-modeling/)                       | 品質特性から測定・証拠までを結ぶ、説明可能な品質モデルを設計する       |
+| [`repository-quality-baseline`](quality/repository-quality-baseline/) | リポジトリ固有の品質モデル、閾値、必須チェックを定義・更新する         |
+| [`quality-assessment`](quality/quality-assessment/)                   | 品質ベースラインに対し、テスト・観測・レビューの証拠から変更を評価する |
+| [`coding-quality-gate`](quality/coding-quality-gate/)                 | 実装後の品質評価、必要な修正、出荷可否の判定を一貫して実行する         |
+
 ### エンジニアリング原則
 
 | Skill                                         | 用途                                                                     |
@@ -41,46 +50,58 @@ Codex と Claude Code で利用できる Agent Skill のコレクションです
 
 ### コードレビュー
 
-| Skill                                                                 | 用途                                                                                 |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| [`review-orchestrator`](reviews/review-orchestrator/)                 | 変更内容とリスクに応じて、実行すべきレビューを選定・調整する                         |
-| [`api-compatibility-review`](reviews/api-compatibility-review/)       | API、event、CLI、設定、schema の後方互換性を確認する                                 |
-| [`architecture-review`](reviews/architecture-review/)                 | 責務、境界、依存方向、結合、拡張性を確認する                                         |
-| [`change-impact-review`](reviews/change-impact-review/)               | 変更が呼び出し元、データ、API、運用に与える影響を追跡する                            |
-| [`code-smell-review`](reviews/code-smell-review/)                     | 設計、責務、結合、変更容易性、テスト容易性の問題を確認する                           |
-| [`code-comment-review`](reviews/code-comment-review/)                 | コメント、docstring、TODO の正確性と保守性を確認する                                 |
-| [`comment-contract-reviewer`](reviews/comment-contract-reviewer/)     | コメントが公開契約だけを説明しているか確認する                                       |
-| [`comment-review-orchestrator`](reviews/comment-review-orchestrator/) | コメントレビューを専門 reviewer と連携して統合する                                   |
-| [`concurrency-review`](reviews/concurrency-review/)                   | race、deadlock、leak、cancel、shutdown の問題を確認する                              |
-| [`data-integrity-review`](reviews/data-integrity-review/)             | DB、migration、永続化、復旧時のデータ整合性を確認する                                |
-| [`dependency-review`](reviews/dependency-review/)                     | 脆弱性、ライセンス、保守性、供給網リスクを確認する                                   |
-| [`gocomment-contract-review`](reviews/gocomment-contract-review/)     | git diff の Go コメントを抽出して契約レビューする                                    |
-| [`engineering-compass-review`](reviews/engineering-compass-review/)   | Engineering Compass 原則に基づき可読性、理解しやすさ、テスト容易性、疎結合を確認する |
-| [`security-review`](reviews/security-review/)                         | 認証・認可、入力、秘密情報、プライバシー、悪用経路を確認する                         |
-| [`test-quality-review`](reviews/test-quality-review/)                 | テストの検出力、脆さ、flakiness、順序依存を確認する                                  |
-| [`ta-review`](reviews/ta-review/)                                     | テスト分析の観点から要件、受け入れ条件、ユーザー価値を確認する                       |
-| [`tta-review`](reviews/tta-review/)                                   | 技術テスト分析の観点からテスト容易性と非機能リスクを確認する                         |
-| [`review-finding-validator`](reviews/review-finding-validator/)       | 既存のレビュー指摘をソース、テスト、仕様に照らして検証する                           |
-| [`review-calibration`](reviews/review-calibration/)                   | 複数 reviewer の指摘を正規化・重複排除・統合する                                     |
-| [`coderabbit-review`](reviews/coderabbit-review/)                     | CodeRabbit のレビューを複数回実行し、指摘の安定性を評価する                          |
+直接呼び出せる公開 skill は次の 2 つです。
 
-### 品質・運用レビュー
+| 公開 skill                                    | 用途                                             |
+| --------------------------------------------- | ------------------------------------------------ |
+| [`review-orchestrator`](review-orchestrator/) | 変更内容とリスクに応じてレビューを選定・調整する |
+| [`goreadable`](goreadable/)                   | Go の可読性レビューの優先対象を定量的に抽出する  |
 
-| Skill                                                               | 用途                                                               |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| [`accessibility-review`](reviews/accessibility-review/)             | キーボード、スクリーンリーダー、視覚、motion、入力の障壁を確認する |
-| [`requirements-review`](reviews/requirements-review/)               | 要件の曖昧さ、抜け、矛盾、検証可能性を確認する                     |
-| [`performance-review`](reviews/performance-review/)                 | latency、throughput、メモリ、I/O、DB、スケーラビリティを確認する   |
-| [`migration-review`](reviews/migration-review/)                     | 移行の互換性、安全性、冪等性、rollback を確認する                  |
-| [`mutation-test-review`](reviews/mutation-test-review/)             | テストが現実的なコード変更を検出できるか確認する                   |
-| [`property-based-test-review`](reviews/property-based-test-review/) | 不変条件、入力空間、組み合わせ、stateful test を確認する           |
-| [`privacy-review`](reviews/privacy-review/)                         | 個人データの収集、利用、保存、共有、削除を確認する                 |
-| [`observability-review`](reviews/observability-review/)             | ログ、metrics、trace、health check、障害切り分けを確認する         |
-| [`incident-readiness-review`](reviews/incident-readiness-review/)   | 検知、診断、封じ込め、復旧、runbook の準備状況を確認する           |
-| [`release-readiness-review`](reviews/release-readiness-review/)     | deploy、rollback、migration、監視、復旧の準備状況を確認する        |
-| [`prd-acceptance-review`](reviews/prd-acceptance-review/)           | 完成物が PRD の受け入れ条件を満たすか確認する                      |
+#### `review-orchestrator` が選択する内部 reviewer
 
-各 skill の発動条件、制約、成果物は、それぞれの `SKILL.md` を参照してください。
+以下は `review-orchestrator` に同梱される内部 component です。単独では install・
+起動せず、必要な観点だけを `review-orchestrator` が選択します。
+
+| 内部 reviewer                                                                            | 用途                                                                                 |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| [`api-compatibility-review`](review-orchestrator/skills/api-compatibility-review/)       | API、event、CLI、設定、schema の後方互換性を確認する                                 |
+| [`architecture-review`](review-orchestrator/skills/architecture-review/)                 | 責務、境界、依存方向、結合、拡張性を確認する                                         |
+| [`change-impact-review`](review-orchestrator/skills/change-impact-review/)               | 変更が呼び出し元、データ、API、運用に与える影響を追跡する                            |
+| [`code-smell-review`](review-orchestrator/skills/code-smell-review/)                     | 設計、責務、結合、変更容易性、テスト容易性の問題を確認する                           |
+| [`code-comment-review`](review-orchestrator/skills/code-comment-review/)                 | コメント、docstring、TODO の正確性と保守性を確認する                                 |
+| [`comment-contract-reviewer`](review-orchestrator/skills/comment-contract-reviewer/)     | コメントが公開契約だけを説明しているか確認する                                       |
+| [`comment-review-orchestrator`](review-orchestrator/skills/comment-review-orchestrator/) | コメントレビューを専門 reviewer と連携して統合する                                   |
+| [`concurrency-review`](review-orchestrator/skills/concurrency-review/)                   | race、deadlock、leak、cancel、shutdown の問題を確認する                              |
+| [`data-integrity-review`](review-orchestrator/skills/data-integrity-review/)             | DB、migration、永続化、復旧時のデータ整合性を確認する                                |
+| [`dependency-review`](review-orchestrator/skills/dependency-review/)                     | 脆弱性、ライセンス、保守性、供給網リスクを確認する                                   |
+| [`gocomment-contract-review`](review-orchestrator/skills/gocomment-contract-review/)     | git diff の Go コメントを抽出して契約レビューする                                    |
+| [`engineering-compass-review`](review-orchestrator/skills/engineering-compass-review/)   | Engineering Compass 原則に基づき可読性、理解しやすさ、テスト容易性、疎結合を確認する |
+| [`security-review`](review-orchestrator/skills/security-review/)                         | 認証・認可、入力、秘密情報、プライバシー、悪用経路を確認する                         |
+| [`test-quality-review`](review-orchestrator/skills/test-quality-review/)                 | テストの検出力、脆さ、flakiness、順序依存を確認する                                  |
+| [`ta-review`](review-orchestrator/skills/ta-review/)                                     | テスト分析の観点から要件、受け入れ条件、ユーザー価値を確認する                       |
+| [`tta-review`](review-orchestrator/skills/tta-review/)                                   | 技術テスト分析の観点からテスト容易性と非機能リスクを確認する                         |
+| [`review-finding-validator`](review-orchestrator/skills/review-finding-validator/)       | 既存のレビュー指摘をソース、テスト、仕様に照らして検証する                           |
+| [`review-calibration`](review-orchestrator/skills/review-calibration/)                   | 複数 reviewer の指摘を正規化・重複排除・統合する                                     |
+| [`coderabbit-review`](review-orchestrator/skills/coderabbit-review/)                     | CodeRabbit のレビューを複数回実行し、指摘の安定性を評価する                          |
+
+#### 品質・運用の内部 reviewer
+
+| 内部 reviewer                                                                          | 用途                                                               |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| [`accessibility-review`](review-orchestrator/skills/accessibility-review/)             | キーボード、スクリーンリーダー、視覚、motion、入力の障壁を確認する |
+| [`requirements-review`](review-orchestrator/skills/requirements-review/)               | 要件の曖昧さ、抜け、矛盾、検証可能性を確認する                     |
+| [`performance-review`](review-orchestrator/skills/performance-review/)                 | latency、throughput、メモリ、I/O、DB、スケーラビリティを確認する   |
+| [`migration-review`](review-orchestrator/skills/migration-review/)                     | 移行の互換性、安全性、冪等性、rollback を確認する                  |
+| [`mutation-test-review`](review-orchestrator/skills/mutation-test-review/)             | テストが現実的なコード変更を検出できるか確認する                   |
+| [`property-based-test-review`](review-orchestrator/skills/property-based-test-review/) | 不変条件、入力空間、組み合わせ、stateful test を確認する           |
+| [`privacy-review`](review-orchestrator/skills/privacy-review/)                         | 個人データの収集、利用、保存、共有、削除を確認する                 |
+| [`observability-review`](review-orchestrator/skills/observability-review/)             | ログ、metrics、trace、health check、障害切り分けを確認する         |
+| [`incident-readiness-review`](review-orchestrator/skills/incident-readiness-review/)   | 検知、診断、封じ込め、復旧、runbook の準備状況を確認する           |
+| [`release-readiness-review`](review-orchestrator/skills/release-readiness-review/)     | deploy、rollback、migration、監視、復旧の準備状況を確認する        |
+| [`prd-acceptance-review`](review-orchestrator/skills/prd-acceptance-review/)           | 完成物が PRD の受け入れ条件を満たすか確認する                      |
+
+公開 skill の発動条件、制約、成果物は、それぞれの `SKILL.md` を参照してください。
+内部 reviewer の選択基準は `review-orchestrator` の `SKILL.md` にあります。
 
 ## インストール
 
@@ -96,7 +117,7 @@ active skill が `~/.claude/skills` と `~/.agents/skills` にコピーされま
 make link
 ```
 
-インストール対象は `deprecated/` を除く、トップレベル、`implementation/`、`reviews/` 配下の `SKILL.md` から自動的に決まります。
+インストール対象は `deprecated/` を除く、トップレベルと `quality/` 直下の `SKILL.md` から自動的に決まります。`implementation-orchestrator/skills/` と `review-orchestrator/skills/` は bundle 内部 component であり、個別にはインストールしません。
 
 コミット時にフォーマットを確認する hook を有効にするには、次を一度実行します。
 
@@ -109,40 +130,11 @@ make install-hooks
 インストール後、対象プロジェクトのルートで skill を呼び出します。Codex では `$`、Claude Code では `/` を使います。
 
 ```text
-$dw-phase
-$dw-phase next
-$security-review
+$implementation-orchestrator
 $review-orchestrator
 ```
 
-`dw-phase` の設計レビュー後は、依存関係のない phase を並列実装できます。
-
-全体フローを使う場合は `dw-phase-tournament-flow` を入口にします。要件、
-受入条件、phase 設計、blackbox test design は `.dev-workflow-tournament/`
-に実装前に保存・承認されます。実装後に phase 設計を作り直すことはありません。
-この flow は独自 state を管理し、既存 workflow skill へ委譲しません。
-
-```text
-$dw-phase-tournament-flow
-# 要件・設計成果物を作成し、人間レビューを待つ
-
-# 設計承認後、実装 wave、必要な tournament、検証、統合を実行
-$dw-phase-tournament-flow
-
-# 状態操作も全体フローの窓口から実行
-$dw-phase-tournament-flow review
-$dw-phase-tournament-flow approve
-$dw-phase-tournament-flow next
-# 上記は `.dev-workflow-tournament/` の state を更新する
-```
-
-`dw-phase-parallel-light` は native subagent を使うため、agent command の指定は不要です。並列系の skill は agent に commit、push、PR 作成をさせず、ユーザーが Git 操作を行った後に `status` で状態を同期します。
-
-```text
-$dw-phase-parallel-light
-```
-
-開発フローの状態と成果物は、対象プロジェクトの `.dev-workflow*` ディレクトリに保存されます。Codex と Claude Code で状態を共有する場合は、同じプロジェクトルートから実行してください。
+`implementation-orchestrator` は変更の大きさ・外部契約・リスクに応じて、direct、staged、parallel、comparative の実行方法と必要なreviewを選びます。作業の根拠と最終証拠は対象プロジェクトの `.implementation-orchestrator/` に保存されます。
 
 ## 開発・検証
 
@@ -160,8 +152,9 @@ make lint
 .
 ├── <skill-name>/SKILL.md       # 共通系 skill
 ├── implementation-orchestrator/ # 実装方法を選択する orchestrator と内部 skill 群
-├── implementation/<skill-name>/ # 実装・開発フロー系 skill
-├── reviews/<skill-name>/       # コードレビュー系 skill
+├── quality/<skill-name>/        # repository品質モデルとquality gate
+├── review-orchestrator/         # review の公開 entry point
+│   └── skills/<review-name>/   # orchestrator が選択する内部 reviewer
 ├── <skill-name>/agents/        # agent 用メタデータ（必要な skill のみ）
 ├── <skill-name>/scripts/       # 実行ロジック（必要な skill のみ）
 ├── tests/                      # skill / workflow のテスト

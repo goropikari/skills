@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Workflow Evals"
+  short_description: "Evaluate coding workflows with frozen acceptance tests"
+  default_prompt: "Use $agent-workflow-evals to evaluate implementation workflow quality using frozen black-box acceptance tests and evidence."

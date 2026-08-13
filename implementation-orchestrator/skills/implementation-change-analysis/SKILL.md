@@ -30,8 +30,8 @@ Record:
 ## Decide
 
 Recommend the smallest route that protects the highest risks. A broad PRD is
-not by itself evidence for `acceptance-driven-app`; distinguish a new app,
-phase-based delivery, acceptance harness, and ordinary Web/API work.
+not by itself evidence for a staged or comparative route; distinguish a new
+app, acceptance-harness need, and ordinary Web/API work.
 
 Return the route decision in the orchestrator's required format and include the
 repository evidence supporting it. If evidence is missing, name the smallest

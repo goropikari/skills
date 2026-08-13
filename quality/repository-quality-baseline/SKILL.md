@@ -33,26 +33,23 @@ the baseline depend on a universal score or copy every available factor.
 
 ## Analysis skill set
 
-Treat the following named skills as available in the shared `~/.agents/skills` directory. Invoke them by name or read their `SKILL.md` directly; do not reference or clone a remote repository during normal analysis.
+Treat the following named skills as available in the shared `~/.agents/skills` directory. Invoke them by name or read their `SKILL.md` directly; do not reference or clone a remote repository during normal analysis. Individual review procedures are internal to `$review-orchestrator`; request the relevant review scope through that public entry point.
 
 Always apply:
 
-- `$requirements-review`: clarify expected behavior and unverifiable requirements;
-- `$architecture-review`: identify responsibility, dependency, and extension boundaries;
-- `$change-impact-review`: trace callers, data, APIs, configuration, and operations;
-- `$security-review`: identify authentication, authorization, input, secret, privacy, and abuse risks;
+- `$review-orchestrator`: select the requirements, architecture, change-impact, and security review procedures needed for the baseline;
 - `$whitebox-risk-based-test`: identify implementation-driven regression and test gaps.
 
 Apply conditionally when the repository or change calls for them:
 
-- `$api-compatibility-review` for public APIs, events, CLIs, schemas, or configuration;
-- `$data-integrity-review` or `$migration-review` for persistence, schema, or data-format changes;
-- `$concurrency-review` for parallelism, cancellation, shared state, or shutdown;
-- `$privacy-review` for personal data;
-- `$performance-review` for latency, throughput, memory, I/O, or scale-sensitive code;
-- `$observability-review` and `$release-readiness-review` for production behavior and rollout;
-- `$test-quality-review` for existing or newly added tests;
-- `$readability-review` or `$code-smell-review` for maintainability expectations.
+- `$review-orchestrator` with API compatibility scope for public APIs, events, CLIs, schemas, or configuration;
+- `$review-orchestrator` with data-integrity or migration scope for persistence, schema, or data-format changes;
+- `$review-orchestrator` with concurrency scope for parallelism, cancellation, shared state, or shutdown;
+- `$review-orchestrator` with privacy scope for personal data;
+- `$review-orchestrator` with performance scope for latency, throughput, memory, I/O, or scale-sensitive code;
+- `$review-orchestrator` with observability or release-readiness scope for production behavior and rollout;
+- `$review-orchestrator` with test-quality scope for existing or newly added tests;
+- `$review-orchestrator` with readability or code-smell scope for maintainability expectations.
 
 Use these skills as analysis procedures, not unquestionable policy. Translate only repository-supported findings into `must_quality`, `mechanical_checks`, `critical_defects`, or `performance_quality`. Record the names of applied skills and their evidence in `baseline.json`. Do not apply every conditional skill by default; unrelated reviews dilute the baseline and create false requirements.
 

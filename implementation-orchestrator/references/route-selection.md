@@ -6,13 +6,13 @@ smallest set of allowed skills that improves safety or evidence.
 | Signal                                              | Execution mode                 | Supporting skills                                                             |
 | --------------------------------------------------- | ------------------------------ | ----------------------------------------------------------------------------- |
 | Small local change, clear design, low risk          | Direct                         | focused criteria, targeted tests, self-review                                 |
-| Mature app, ordinary feature or bug fix             | Direct or staged               | `change-impact-review`, relevant test-design skill                            |
-| Greenfield app, MVP, or broad product request       | Staged                         | `prd-maker`, `architecture-review`, `requirements-review`                     |
-| Multiple dependent work units                       | Staged                         | `architecture-review`, `change-impact-review`, test-design skill              |
-| Independent work units with clear boundaries        | Parallel                       | `architecture-review`, `tta-review`, `test-quality-review`                    |
-| Competing viable designs with material risk         | Comparative                    | relevant risk reviews, `blackbox-risk-based-test`, `whitebox-risk-based-test` |
+| Mature app, ordinary feature or bug fix             | Direct or staged               | `review-orchestrator` (impact review), relevant test-design skill             |
+| Greenfield app, MVP, or broad product request       | Staged                         | `prd-maker`, `review-orchestrator` (architecture / requirements review)       |
+| Multiple dependent work units                       | Staged                         | `review-orchestrator` (architecture / impact review), test-design skill       |
+| Independent work units with clear boundaries        | Parallel                       | `review-orchestrator` (architecture / test review)                            |
+| Competing viable designs with material risk         | Comparative                    | `review-orchestrator`, `blackbox-risk-based-test`, `whitebox-risk-based-test` |
 | External artifact needs a stable black-box oracle   | Direct, staged, or comparative | internal `implementation-acceptance-harness` plus matching test-design skill  |
-| Security, privacy, migration, or compatibility risk | Direct, staged, or comparative | matching risk review plus test-design skill                                   |
+| Security, privacy, migration, or compatibility risk | Direct, staged, or comparative | `review-orchestrator` (matching risk review) plus test-design skill           |
 
 ## Precedence rules
 
@@ -36,8 +36,9 @@ smallest set of allowed skills that improves safety or evidence.
 - What must be frozen before implementation?
 - Which checks prove completion, and which failure would be unacceptable?
 
-## Prohibited route sources
+## Installation boundary
 
-Do not select, read, or invoke any skill under the repository's
-`implementation/` directory. This includes existing implementation workflows;
-the new orchestrator owns the plan and performs the implementation itself.
+Select only skills available in the current installation. Resolve this
+orchestrator's internal components relative to its own directory, and request
+reviews through the public `review-orchestrator` entry point. The orchestrator
+owns the implementation plan and performs the implementation itself.
