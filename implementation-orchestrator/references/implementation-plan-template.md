@@ -11,6 +11,12 @@
 
 - Primary risks:
 - Design uncertainty:
+- Closest existing precedent and selected relationship: reuse / adapt /
+  intentionally do not follow
+- Rationale for the selected relationship (including any complexity,
+  responsibility, dependency, testability, or risk concern):
+- Pattern or architecture decision: concrete change pressure addressed, or why
+  no additional pattern is needed
 - Compatibility and rollback considerations:
 - Active workflow state:
 - Applicable repository instructions and precedence:

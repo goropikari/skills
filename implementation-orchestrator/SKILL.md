@@ -36,8 +36,11 @@ repository skills, and carry the work through implementation and verification.
 5. Read only the internal component skills needed for planning, resolving each
    path from `<orchestrator_dir>`, for example
    `<orchestrator_dir>/skills/implementation-acceptance-contract/SKILL.md`.
-   They are under this skill's own `skills/` directory and are not repository
-   implementation workflows.
+   Read `implementation-architecture-planning` when a non-mechanical change
+   creates or changes a responsibility boundary, extension point, state or
+   lifecycle boundary, external integration, or has material design
+   uncertainty. They are under this skill's own `skills/` directory and are
+   not repository implementation workflows.
 6. Establish acceptance criteria and a validation matrix before implementation
    when the change affects externally observable behavior, has material risk,
    or involves multiple contributors. Use the internal acceptance-contract
@@ -90,8 +93,22 @@ calls for readability, testability, or loose coupling.
 ## Planning rules
 
 - For a small local change or a conventional mature-repository change, define
-  focused criteria, reuse the nearest pattern, implement, run targeted checks,
-  and self-review.
+  focused criteria; inspect the nearest relevant implementation as evidence,
+  then explicitly choose to reuse it, adapt it, or not follow it; implement,
+  run targeted checks, and self-review. Existing code is not automatically a
+  design authority.
+- For every non-mechanical change, consider the relevant existing pattern
+  before introducing an abstraction or named design pattern. Prefer a pattern
+  only when it addresses a concrete change pressure, such as a responsibility
+  boundary, variation point, integration boundary, or state/lifecycle
+  concern. Do not introduce a pattern merely for symmetry or terminology.
+- Do not follow an existing pattern when it has mixed responsibilities,
+  harmful dependency direction, uncontrolled conditional growth, poor test
+  seams, or known operational or compatibility risk. Record the chosen
+  relationship to the closest precedent (reuse, adapt, or intentionally do
+  not follow) and a short rationale in the implementation plan. Keep any
+  corrective design local to the requested change unless a separate refactor
+  is necessary and explicitly scoped.
 - For high-risk or uncertain work, compose a plan with the relevant allowed
   reviewers before implementation.
 - When implementing or changing complex logic, check whether distinct
