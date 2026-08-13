@@ -1,4 +1,0 @@
-interface:
-  display_name: "Quality Assessment"
-  short_description: "Measure and evaluate quality against a baseline"
-  default_prompt: "Use $quality-assessment to assess a software change against its repository quality baseline and report evidence, findings, and next actions."

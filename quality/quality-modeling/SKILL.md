@@ -85,7 +85,7 @@ to this Skill.
 
 ## Handoff to assessment
 
-`quality-assessment` consumes the baseline and produces current evidence and a
-decision. It must not invent a new factor, threshold, or weighting scheme
-during a gate run. If the model is inadequate, record the gap and propose a
-separate baseline/model revision.
+`coding-quality-gate` consumes the baseline and produces current evidence and
+a decision through its internal assessment component. It must not invent a new
+factor, threshold, or weighting scheme during a gate run. If the model is
+inadequate, record the gap and propose a separate baseline/model revision.

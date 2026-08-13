@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "baseline_version": "1.0.0",
-  "run_id": "db8dd6c5-ca05-4906-90b0-efd3482a8ffc",
-  "started_at": "2026-08-13T16:56:17.848340+00:00",
-  "finished_at": "2026-08-13T16:56:19.150839+00:00",
+  "run_id": "591b7197-86a5-4ce2-83ea-91e6432daad9",
+  "started_at": "2026-08-13T17:41:19.116713+00:00",
+  "finished_at": "2026-08-13T17:41:20.546193+00:00",
   "result": "PASS",
   "checks": [
     {
@@ -11,31 +11,36 @@
       "status": "PASS",
       "command": "python3 -m pytest",
       "exit_code": 0,
-      "evidence": "============================= test session starts ==============================\nplatform linux -- Python 3.14.4, pytest-9.0.2, pluggy-1.6.0\nrootdir: /home/ubuntu/workspace/github/skills\nconfigfile: pytest.ini\ntestpaths: tests\nplugins: typeguard-4.4.4\ncollected 11 items\n\ntests/test_implementation_orchestrator_validators.py .........           [ 81%]\ntests/test_make_install.py ..                                            [100%]\n\n============================== 11 passed in 0.50s =============================="
+      "evidence": "============================= test session starts ==============================\nplatform linux -- Python 3.14.4, pytest-9.0.2, pluggy-1.6.0\nrootdir: /home/ubuntu/workspace/github/skills\nconfigfile: pytest.ini\ntestpaths: tests\nplugins: typeguard-4.4.4\ncollected 11 items\n\ntests/test_implementation_orchestrator_validators.py .........           [ 81%]\ntests/test_make_install.py ..                                            [100%]\n\n============================== 11 passed in 0.52s =============================="
     },
     {
       "id": "lint-and-secret-scan",
       "status": "PASS",
       "command": "make lint",
       "exit_code": 0,
-      "evidence": "dprint fmt\n10 files left unchanged\ngitleaks detect --no-banner --redact --source .\n\nError saving incremental file /home/ubuntu/.cache/dprint/cache/incremental/14541249713823195307: Read-only file system (os error 30) (for '/home/ubuntu/.cache/dprint/cache/incremental/14541249713823195307')\n1:56AM INF 64 commits scanned.\n1:56AM INF scanned ~866762 bytes (866.76 KB) in 168ms\n1:56AM INF no leaks found"
+      "evidence": "dprint fmt\n10 files left unchanged\ngitleaks detect --no-banner --redact --source .\n\nError saving incremental file /home/ubuntu/.cache/dprint/cache/incremental/14541249713823195307: Read-only file system (os error 30) (for '/home/ubuntu/.cache/dprint/cache/incremental/14541249713823195307')\n2:41AM INF 65 commits scanned.\n2:41AM INF scanned ~876394 bytes (876.39 KB) in 189ms\n2:41AM INF no leaks found"
     }
   ],
   "findings": [],
   "changed_scope": [
-    "implementation-orchestrator/SKILL.md",
-    "implementation-orchestrator/VERSION",
-    "implementation-orchestrator/references/evidence-schema.md",
-    "implementation-orchestrator/references/implementation-plan-template.md",
-    "implementation-orchestrator/skills/implementation-acceptance-contract/SKILL.md",
-    "implementation-orchestrator/skills/implementation-acceptance-harness/SKILL.md",
-    "implementation-orchestrator/skills/implementation-verification-gate/SKILL.md",
-    "tests/test_implementation_orchestrator_validators.py",
-    ".quality/"
+    "README.md",
+    "quality/coding-quality-gate/SKILL.md",
+    "quality/coding-quality-gate/VERSION",
+    "quality/quality-assessment/SKILL.md",
+    "quality/quality-assessment/VERSION",
+    "quality/quality-assessment/agents/openai.yaml",
+    "quality/quality-assessment/references/assessment-record.md",
+    "quality/quality-modeling/SKILL.md",
+    "quality/quality-modeling/VERSION",
+    "quality/repository-quality-baseline/SKILL.md",
+    "quality/repository-quality-baseline/VERSION",
+    "quality/repository-quality-baseline/references/composition-example.md",
+    "tests/test_make_install.py",
+    "quality/coding-quality-gate/skills/"
   ],
   "notes": [
     "Mechanical checks passed.",
-    "Semantic review: PASS. Public artifact changes now require an explicit check that a frozen harness covers every new observable behavior; regression-only coverage is rejected as evidence for a new contract.",
+    "Semantic review: PASS. quality-assessment is now an internal component of coding-quality-gate; its procedure and reference are preserved, public documentation directs users to the gate, and installation removes a stale standalone copy while retaining the bundled component.",
     "Must Quality: requirements, regression, repository conventions, and security all pass. No unresolved quality finding remains."
   ]
 }

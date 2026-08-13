@@ -20,7 +20,7 @@ especially `quality_model`, discovered commands, `must_quality`, and
 User: Implement <task>.
 Agent: $<implementation-skill>
       Use the repository's acceptance criteria and `.quality/baseline.json`.
-      After implementation, invoke $quality-assessment or $coding-quality-gate.
+      After implementation, invoke $coding-quality-gate.
 ```
 
 The implementation Skill should not spend tokens rereading the whole repository quality policy. Give it the baseline path and the task-specific requirements. The assessment/gate handles build, typecheck, lint, tests, repository-specific tools, and semantic review; the semantic reviewer receives the bounded context packet.

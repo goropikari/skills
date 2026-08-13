@@ -35,12 +35,24 @@ Codex と Claude Code で利用できる Agent Skill のコレクションです
 
 ### 品質管理
 
-| Skill                                                                 | 用途                                                                   |
-| --------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| [`quality-modeling`](quality/quality-modeling/)                       | 品質特性から測定・証拠までを結ぶ、説明可能な品質モデルを設計する       |
-| [`repository-quality-baseline`](quality/repository-quality-baseline/) | リポジトリ固有の品質モデル、閾値、必須チェックを定義・更新する         |
-| [`quality-assessment`](quality/quality-assessment/)                   | 品質ベースラインに対し、テスト・観測・レビューの証拠から変更を評価する |
-| [`coding-quality-gate`](quality/coding-quality-gate/)                 | 実装後の品質評価、必要な修正、出荷可否の判定を一貫して実行する         |
+| Skill                                                                 | 用途                                                             |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| [`quality-modeling`](quality/quality-modeling/)                       | 品質特性から測定・証拠までを結ぶ、説明可能な品質モデルを設計する |
+| [`repository-quality-baseline`](quality/repository-quality-baseline/) | リポジトリ固有の品質モデル、閾値、必須チェックを定義・更新する   |
+| [`coding-quality-gate`](quality/coding-quality-gate/)                 | 実装後の品質評価、必要な修正、出荷可否の判定を一貫して実行する   |
+
+### 品質管理の使い方
+
+```text
+# 品質モデルを設計・見直す
+$quality-modeling
+
+# リポジトリの品質基準を作成・更新する
+$repository-quality-baseline
+
+# 実装後の品質を確認し、出荷可否を判定する
+$coding-quality-gate
+```
 
 ### エンジニアリング原則
 

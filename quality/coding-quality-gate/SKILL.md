@@ -7,8 +7,9 @@ description: Orchestrate quality assessment and stabilize coding-agent changes a
 
 Prevent below-baseline code from reaching the user. Treat `baseline.json` as
 the calibrated quality-model instance and `state.json` as the assessment audit
-trail. Use `$quality-assessment` for the assessment protocol; this Skill owns
-orchestration, deterministic execution, repair, and delivery readiness.
+trail. This Skill owns orchestration, deterministic execution, assessment,
+repair, and delivery readiness. Its `quality-assessment` procedure is an
+internal component, not a directly invoked skill.
 
 Use the bundled deterministic tools before asking an AI to reason about quality:
 
@@ -32,7 +33,9 @@ Read [tool-vs-ai.md](references/tool-vs-ai.md) before evaluating Must Quality. C
 1. Find `.quality/baseline.json` at the repository root.
 2. If it does not exist, invoke `$repository-quality-baseline` first. Do not invent a repository-specific baseline silently. Run its initializer and inspection tools automatically.
 3. Read the current task requirements, changed files, repository guidance, and the baseline. Determine the smallest relevant check set, but never skip a required check without recording why.
-4. Invoke `$quality-assessment` with the baseline path and changed scope. Do not create new factors, thresholds, or weights during the gate run.
+4. Use the internal `quality-assessment` component with the baseline path and
+   changed scope. Do not create new factors, thresholds, or weights during the
+   gate run.
 
 This Skill is the post-implementation gate. Let the task-specific implementation Skill own planning and code changes; let this Skill own evidence collection, quality classification, repair, and delivery readiness.
 
@@ -41,7 +44,12 @@ This Skill is the post-implementation gate. Let the task-specific implementation
 1. Inspect the diff and map each requirement to implementation and tests. Identify public API, persistence, security, concurrency, migration, and compatibility risks.
 2. Automatically run `run_quality_gate.py` first. Run every applicable `mechanical_checks` entry through the script so exit codes, timeouts, redaction, and state recording are consistent. Prefer the repository's documented commands and deterministic tools: build, typecheck, lint, unit/integration tests, generated-file checks, and security/static analysis.
 3. Classify failures as implementation failure, environment/tooling failure, flaky test, or unrelated pre-existing failure. Preserve raw command, exit code, and concise evidence in the result.
-4. Automatically generate `build_quality_context.py` output and pass it to `$quality-assessment` as bounded evidence. Perform semantic review against the selected quality factors, `must_quality`, and the task. Check behavior, edge cases, error handling, scope, architecture fit, maintainability, and meaningful tests. Use Performance Quality only after all Must Quality rules pass.
+4. Automatically generate `build_quality_context.py` output and use it as
+   bounded evidence for the internal `quality-assessment` component. Perform
+   semantic review against the selected quality factors, `must_quality`, and
+   the task. Check behavior, edge cases, error handling, scope, architecture
+   fit, maintainability, and meaningful tests. Use Performance Quality only
+   after all Must Quality rules pass.
 5. Apply a Quality Gate:
 
    - `FAIL` for any critical defect or unmet Must Quality rule;

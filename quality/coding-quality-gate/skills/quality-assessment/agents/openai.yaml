@@ -1,0 +1,4 @@
+interface:
+  display_name: "Quality Assessment"
+  short_description: "Internal quality-gate assessment component"
+  default_prompt: "Use this component as directed by coding-quality-gate."

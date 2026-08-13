@@ -22,7 +22,7 @@ quality-modeling
   GQM selection, benchmark calibration, thresholds, rating, aggregation,
   severity, weights, exceptions
         ↓ execute
-quality-assessment
+coding-quality-gate
   current evidence → factor statuses → gate decision → state history
 ```
 
@@ -131,10 +131,10 @@ Do not weaken a Must Quality rule merely to make a current change pass. Repair t
 
 ## Handoff to assessment and gate
 
-After initialization or update, invoke `$quality-assessment` for assessment
-work. `$coding-quality-gate` may orchestrate that assessment and its bundled
-mechanical runner, but neither the gate nor an implementation Skill may
-redefine the model or baseline during a task.
+After initialization or update, invoke `$coding-quality-gate` for assessment
+work. It owns the bundled assessment procedure and mechanical runner; neither
+the gate nor an implementation Skill may redefine the model or baseline during
+a task.
 
 ## Compose with implementation skills
 
@@ -145,7 +145,7 @@ $repository-quality-baseline  (once per repository or when the baseline changes)
         ↓
 $<goropikari implementation skill>  (plan and implement the task)
         ↓
-$quality-assessment / $coding-quality-gate  (evidence, evaluation, repair loop)
+$coding-quality-gate  (evidence, evaluation, repair loop)
         ↓
 Deliver only after PASS or an explicitly accepted exception
 ```

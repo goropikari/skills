@@ -1,6 +1,9 @@
 ---
 name: quality-assessment
-description: Assess software or a change against a repository quality baseline using deterministic checks, tests, observations, and semantic review. Use after implementation, during quality-gate work, for regression assessment, or when reporting evidence-backed quality findings and improvement actions.
+description: >-
+  Internal component for coding-quality-gate: assess a software change against
+  a repository quality baseline using deterministic checks, observations, and
+  semantic review. Do not invoke as a standalone workflow.
 ---
 
 # Quality Assessment
@@ -18,9 +21,9 @@ sources, and aggregation rules as the assessment contract.
    by the change.
 2. Run the baseline's applicable deterministic instruments first. Preserve
    command, exit status, bounded output, timestamp, and scope.
-3. Normalize raw metric values without discarding entity identity, distribution,
-   outliers, or missing values. A skipped or
-   unavailable instrument needs a reason and must not be reported as passing.
+3. Normalize raw metric values without discarding entity identity,
+   distribution, outliers, or missing values. A skipped or unavailable
+   instrument needs a reason and must not be reported as passing.
 4. Convert raw values to ratings using the recorded threshold-, utility-, or
    probabilistic function. Preserve the raw value, rating, threshold source,
    and confidence.
@@ -30,9 +33,9 @@ sources, and aggregation rules as the assessment contract.
 6. Perform semantic review for measures assigned to review Skills. Separate
    observed evidence from interpretation and make every finding location- or
    behavior-specific.
-7. Map every applicable factor to `PASS`, `FAIL`, `BLOCKED`, or `NOT_APPLICABLE`.
-   Include confidence, raw metrics, ratings, aggregate values, and evidence
-   references.
+7. Map every applicable factor to `PASS`, `FAIL`, `BLOCKED`, or
+   `NOT_APPLICABLE`. Include confidence, raw metrics, ratings, aggregate
+   values, and evidence references.
 8. Apply the baseline policy: critical defects and unmet required factors block
    delivery; optional weaknesses become notes; unknown required evidence is
    `BLOCKED`.
@@ -40,8 +43,9 @@ sources, and aggregation rules as the assessment contract.
    unbounded logs.
 10. If the result is not passable, repair the implementation or tests and rerun
     the affected instruments, followed by the complete required set.
-11. If the model, threshold, rating, or aggregation rule is wrong, stop changing
-    the current result. Propose a versioned model/baseline revision separately.
+11. If the model, threshold, rating, or aggregation rule is wrong, stop
+    changing the current result. Propose a versioned model/baseline revision
+    separately.
 
 ## Evidence discipline
 
@@ -69,14 +73,3 @@ sources, and aggregation rules as the assessment contract.
 Use the baseline's exact policy and statuses. Do not relax a threshold because
 the current change fails it, and do not promote an advisory observation to a
 required rule during an assessment.
-
-## Handoff boundaries
-
-- `quality-modeling` defines the generic factors, measures, instruments,
-  limitations, and GQM relationships.
-- `repository-quality-baseline` selects and calibrates them for one repository.
-- This Skill measures, rates, aggregates, and evaluates the calibrated instance.
-
-When repeated assessment findings show that the expected normal has changed,
-send the evidence to `repository-quality-baseline` for a separate baseline
-update.
