@@ -19,6 +19,10 @@ refactor with no changed observable behavior.
 
 1. Inspect the consumer entry point, build/install command, repository test
    conventions, current worktree, and requested behavior.
+   Determine whether an existing frozen harness directly covers every new
+   observable behavior. If it covers only unchanged behavior, add independent
+   consumer-facing criteria and fixtures before freezing it; do not treat its
+   regression pass as proof of the new contract.
 2. Convert required behavior and important exceptional states into stable
    criteria such as `AC-001`. Include expected results and rejection criteria.
 3. For each criterion, define a command that exercises the built or installed

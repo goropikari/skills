@@ -22,9 +22,11 @@ rejected with evidence, or retained as an explicitly accepted residual risk.
 ## Report
 
 For every required check, report `PASS`, `FAIL`, or `NOT RUN` with the exact
-command and observable result. Do not call an unavailable or unexecuted check
-successful. Trace each acceptance criterion to evidence and list residual
-risk, changed files, and any follow-up required before commit or PR.
+command, exit status, and observable result. Put the command and result in the
+evidence entry itself; do not rely on a broader command to imply that a more
+focused check ran. Do not call an unavailable or unexecuted check successful.
+Trace each acceptance criterion to evidence and list residual risk, changed
+files, and any follow-up required before commit or PR.
 
 For parallel or comparative routes, verify worktree/branch boundaries, common
 base, candidate selection evidence, integration behavior, and the final

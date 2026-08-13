@@ -14,6 +14,19 @@ EVIDENCE_VALIDATOR = (
 EVAL_VALIDATOR = (
     REPOSITORY_ROOT / "agent-workflow-evals/scripts/validate_eval_manifest.py"
 )
+ORCHESTRATOR_SKILL = REPOSITORY_ROOT / "implementation-orchestrator/SKILL.md"
+PLAN_TEMPLATE = (
+    REPOSITORY_ROOT
+    / "implementation-orchestrator/references/implementation-plan-template.md"
+)
+ACCEPTANCE_CONTRACT = (
+    REPOSITORY_ROOT
+    / "implementation-orchestrator/skills/implementation-acceptance-contract/SKILL.md"
+)
+VERIFICATION_GATE = (
+    REPOSITORY_ROOT
+    / "implementation-orchestrator/skills/implementation-verification-gate/SKILL.md"
+)
 
 
 def run_validator(script: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
@@ -216,6 +229,19 @@ def test_evidence_validator_accepts_complete_final_evidence(tmp_path: Path) -> N
     result = run_validator(EVIDENCE_VALIDATOR, "--stage", "final", str(evidence))
 
     assert result.returncode == 0, result.stdout
+
+
+def test_orchestrator_requires_documented_example_and_specific_evidence() -> None:
+    skill = ORCHESTRATOR_SKILL.read_text(encoding="utf-8")
+    template = PLAN_TEMPLATE.read_text(encoding="utf-8")
+    contract = ACCEPTANCE_CONTRACT.read_text(encoding="utf-8")
+    verification = VERIFICATION_GATE.read_text(encoding="utf-8")
+
+    assert "## Required route decision" in template
+    assert "exactly as documented" in skill
+    assert "regression-only harness" in skill
+    assert "exactly as documented" in contract
+    assert "exit status" in verification
 
 
 def test_eval_manifest_validator_requires_harnesses(tmp_path: Path) -> None:

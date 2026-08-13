@@ -22,7 +22,14 @@ owns `results` and the final decision evidence.
     }
   ],
   "results": [
-    { "id": "AC-001", "status": "PASS", "evidence": ["go test ./..."] }
+    {
+      "id": "AC-001",
+      "status": "PASS",
+      "evidence": [
+        "Command: go test ./cmd/goreadable -run TestExecute",
+        "Outcome: exit 0; selected CLI scenarios passed"
+      ]
+    }
   ],
   "residual_risks": []
 }
@@ -33,3 +40,7 @@ final` before delivery. Plan-stage `results` must be empty. A non-passing
 required result needs an explicit entry in `residual_risks` with `subject_id`,
 `reason`, and a user-provided
 `accepted_by` value.
+
+For final results, record the exact command or review invocation and its
+observable outcome in `evidence`. A superset command is valid only when the
+entry identifies the focused behavior it exercised.

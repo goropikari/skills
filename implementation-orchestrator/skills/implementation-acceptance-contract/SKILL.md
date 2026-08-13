@@ -38,5 +38,11 @@ consumer-entry, module/package identity when applicable, and build/install
 criteria. If candidates will be compared, freeze the contract and prevent
 candidate changes to the harness before implementation.
 
+When the change adds or modifies user-facing runnable examples in
+documentation, include a criterion that runs at least one representative
+example exactly as documented and checks its promised observable result. Use a
+small fixture when a repository source file could make the example incidental
+or misleading.
+
 Do not create a heavyweight acceptance harness for a tiny internal change with
 no changed observable behavior.

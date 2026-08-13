@@ -15,6 +15,16 @@
 - Active workflow state:
 - Applicable repository instructions and precedence:
 
+## Required route decision
+
+```text
+Primary execution: <direct|staged|parallel|comparative>
+Supporting skills: <list or none>
+Why: <evidence-based reason>
+Rejected options: <option -> reason>
+Required gates: <list>
+```
+
 ## Change size and staging
 
 - Estimated changed lines (additions + deletions):

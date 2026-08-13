@@ -30,8 +30,9 @@ repository skills, and carry the work through implementation and verification.
    than invoking its bundled reviewer components directly.
 4. Write `.implementation-orchestrator/implementation-plan.md` before
    changing product code. Use [implementation-plan-template.md](references/implementation-plan-template.md)
-   and include selected skills, their order, expected outputs, decision gates,
-   implementation steps, and validation commands.
+   and include the required route-decision block, selected skills, their order,
+   expected outputs, decision gates, implementation steps, and validation
+   commands.
 5. Read only the internal component skills needed for planning, resolving each
    path from `<orchestrator_dir>`, for example
    `<orchestrator_dir>/skills/implementation-acceptance-contract/SKILL.md`.
@@ -42,7 +43,9 @@ repository skills, and carry the work through implementation and verification.
    or involves multiple contributors. Use the internal acceptance-contract
    component. For public artifacts, destructive behavior, or candidate
    comparison, also use the internal acceptance-harness component to freeze a
-   black-box oracle before implementation.
+   black-box oracle before implementation. An existing harness is sufficient
+   only when its immutable criteria directly cover the new behavior; a
+   regression-only harness does not independently prove a new public contract.
 7. Use the internal execution-strategy component to choose direct, staged,
    parallel, or comparative execution. Prefer the smallest reversible change.
 8. Implement in the caller's worktree according to the plan. Preserve
@@ -99,6 +102,10 @@ calls for readability, testability, or loose coupling.
   the default workflow or size guidance here.
 - When splitting work, make each stage independently reviewable and testable;
   document the dependency from each later branch/PR to its predecessor.
+- When adding or changing documentation that contains a user-runnable command,
+  API request, or configuration example, include a validation that exercises a
+  representative example exactly as documented. Use an isolated fixture when
+  the repository itself would make the example ambiguous or unsafe.
 - Do not treat review skills as implementation owners; use their findings as
   plan inputs and verify the resulting changes yourself.
 - If an active workflow state exists, resume or report it instead of creating a
