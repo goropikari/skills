@@ -1,0 +1,4 @@
+interface:
+  display_name: "Explain Code Flow"
+  short_description: "Trace and explain code execution clearly"
+  default_prompt: "Use $explain-code-flow to explain how this code executes from entry point to final side effects."
