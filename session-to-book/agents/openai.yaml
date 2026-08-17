@@ -1,0 +1,4 @@
+interface:
+  display_name: "Session to Book"
+  short_description: "Turn a session into a coherent book manuscript"
+  default_prompt: "Use $session-to-book to turn this session into a coherent book manuscript with a strong structure and clear source boundaries."
