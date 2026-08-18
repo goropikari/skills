@@ -1,0 +1,4 @@
+interface:
+  display_name: "QE Artifact Baseline"
+  short_description: "Baseline and refine QE artifacts with metrics"
+  default_prompt: "Use $qe-artifact-baseline to assess, reverse-check, and iteratively refine these QE artifacts."

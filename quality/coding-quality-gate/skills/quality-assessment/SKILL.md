@@ -33,6 +33,13 @@ sources, and aggregation rules as the assessment contract.
 6. Perform semantic review for measures assigned to review Skills. Separate
    observed evidence from interpretation and make every finding location- or
    behavior-specific.
+   When QE artefact factors are applicable, consume the bounded
+   `qe-artifact-baseline` report. Verify that original and reverse-generated
+   statements are traceable, that similarity settings and calibration are
+   recorded, and that low/no-match or proposed-merge items have human
+   decisions. Treat missing report evidence, unreviewed critical gaps, and
+   uncalibrated blocking thresholds as `BLOCKED` or `FAIL` according to the
+   baseline policy.
 7. Map every applicable factor to `PASS`, `FAIL`, `BLOCKED`, or
    `NOT_APPLICABLE`. Include confidence, raw metrics, ratings, aggregate
    values, and evidence references.

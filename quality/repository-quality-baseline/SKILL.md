@@ -51,6 +51,14 @@ Apply conditionally when the repository or change calls for them:
 - `$review-orchestrator` with test-quality scope for existing or newly added tests;
 - `$review-orchestrator` with readability or code-smell scope for maintainability expectations.
 
+Apply conditionally:
+
+- `$qe-artifact-baseline` when the repository contains LLM-generated or
+  otherwise transformed requirements, acceptance criteria, test cases, or BDD
+  scenarios whose semantic traceability matters. Use its report as evidence
+  for the selected QE artefact factors; do not make its similarity bands a
+  universal gate threshold.
+
 Use these skills as analysis procedures, not unquestionable policy. Translate only repository-supported findings into `must_quality`, `mechanical_checks`, `critical_defects`, or `performance_quality`. Record the names of applied skills and their evidence in `baseline.json`. Do not apply every conditional skill by default; unrelated reviews dilute the baseline and create false requirements.
 
 ## Optional analysis tools
@@ -110,6 +118,9 @@ Do not create a custom tool merely to encode a subjective style preference. If t
    useful, a comparable benchmark population. Record distribution, quantile,
    rationale, date, and confidence; never present an uncalibrated threshold as
    an objective fact.
+   For QE artefacts, record applicability explicitly and retain the original
+   and reverse-generated IDs. Calibrate similarity bands against labelled
+   examples when they affect a decision; otherwise classify them as advisory.
 5. Select rating functions and aggregation rules. Preserve leaf-level values
    and define the drill-down path before allowing system-level aggregation.
 6. Define Must Quality as pass/fail rules. At minimum cover requested behavior, build/type validity where applicable, regression protection, tests appropriate to the change, repository conventions, and critical security defects.
@@ -151,5 +162,12 @@ Deliver only after PASS or an explicitly accepted exception
 ```
 
 Pass the implementation Skill the repository root, task acceptance criteria, and the path to `.quality/baseline.json`. Do not ask the implementation Skill to redefine Must Quality during the task. If implementation work reveals a missing stable rule, finish the task using the current baseline, then propose a repository-specific tool or baseline update as a separate evidence-backed change.
+
+When the baseline enables QE artefact quality, pass the implementation Skill the
+applicable artefact scope and require `qe-artifact-baseline` evidence before
+the final gate. The evidence should identify changed source statements,
+reverse-generation gaps, rubric values, similarity configuration, human
+decisions, and unresolved items. Do not rerun full-document generation when a
+changed-scope comparison is sufficient.
 
 Do not rerun baseline initialization for every task when `.quality/baseline.json` is current. Reanalyze only when the stack, CI, architecture, public contract, recurring defects, or team expectations have materially changed.

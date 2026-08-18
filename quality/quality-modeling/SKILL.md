@@ -32,6 +32,27 @@ Read [model-schema.md](references/model-schema.md) for the recommended record
 shape and examples. Read [gqm-and-calibration.md](references/gqm-and-calibration.md)
 when turning stakeholder goals into metrics or deriving thresholds.
 
+## QE artefact quality extension
+
+When a repository creates requirements, acceptance criteria, test cases, or BDD
+scenarios with an LLM, model their quality as a conditional extension rather
+than a universal software-quality score:
+
+```text
+QE artefact quality
+  → clarity, completeness, consistency, testability
+  → rubric score, coverage/traces, contradiction and duplication findings
+  → qe-artifact-baseline, embedding/lexical comparison, human review
+  → versioned report with source IDs, raw scores, decisions, and open gaps
+```
+
+Treat semantic alignment (for example, cosine similarity) as corroborating
+evidence for traceability, not as a proxy for correctness or safety. Record the
+embedding model, preprocessing, threshold source, calibration sample, and
+unmeasured blind spots. Keep the quality model generic; let
+`repository-quality-baseline` decide whether these factors are applicable or
+blocking for a particular repository.
+
 ## GQM design
 
 Use Goal–Question–Metric before choosing a metric:

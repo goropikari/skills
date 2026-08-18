@@ -32,7 +32,7 @@ Read [tool-vs-ai.md](references/tool-vs-ai.md) before evaluating Must Quality. C
 
 1. Find `.quality/baseline.json` at the repository root.
 2. If it does not exist, invoke `$repository-quality-baseline` first. Do not invent a repository-specific baseline silently. Run its initializer and inspection tools automatically.
-3. Read the current task requirements, changed files, repository guidance, and the baseline. Determine the smallest relevant check set, but never skip a required check without recording why.
+3. Read the current task requirements, changed files, repository guidance, and the baseline. Determine the smallest relevant check set, but never skip a required check without recording why. If the baseline marks QE artefact quality applicable, locate the `qe-artifact-baseline` report or run it for the changed artefact scope before semantic assessment. Treat missing required artefact evidence as `BLOCKED`, not as a passing quality score.
 4. Use the internal `quality-assessment` component with the baseline path and
    changed scope. Do not create new factors, thresholds, or weights during the
    gate run.
@@ -49,7 +49,10 @@ This Skill is the post-implementation gate. Let the task-specific implementation
    semantic review against the selected quality factors, `must_quality`, and
    the task. Check behavior, edge cases, error handling, scope, architecture
    fit, maintainability, and meaningful tests. Use Performance Quality only
-   after all Must Quality rules pass.
+   after all Must Quality rules pass. For QE artefact factors, inspect the
+   report's source-to-reverse mappings, rubric scores, similarity
+   configuration, action decisions, and unresolved gaps. Do not infer
+   correctness from a high similarity score or aggregate rubric score.
 5. Apply a Quality Gate:
 
    - `FAIL` for any critical defect or unmet Must Quality rule;

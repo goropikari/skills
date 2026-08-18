@@ -77,6 +77,9 @@ default.
 
 - Requirements: `prd-maker`, `grill-me`, and `review-orchestrator` when a
   requirements review is needed.
+- QE artefact alignment: `qe-artifact-baseline` when requirements, acceptance
+  criteria, test cases, or BDD scenarios must be compared, reverse-checked, or
+  refined before implementation.
 - External behavior and test design: `blackbox-risk-based-test` and
   `whitebox-risk-based-test`; request mutation or property-based test review
   through `review-orchestrator` when appropriate.
@@ -111,6 +114,13 @@ calls for readability, testability, or loose coupling.
   is necessary and explicitly scoped.
 - For high-risk or uncertain work, compose a plan with the relevant allowed
   reviewers before implementation.
+- Select `qe-artifact-baseline` before acceptance-contract work when the change
+  includes multiple QE artefacts or LLM-generated artefacts and the main risk is
+  semantic drift, missing coverage, ambiguity, duplication, or weak
+  requirement-to-test traceability. Feed its unified artefact, open questions,
+  and residual gaps into the acceptance criteria. Skip it for purely
+  mechanical changes, isolated implementation bugs, or changes with no QE
+  artefact basis.
 - When implementing or changing complex logic, check whether distinct
   responsibilities or reasons to change are mixed together. Extract a
   clearly named helper only when it hides detail and makes the caller's

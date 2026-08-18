@@ -3,16 +3,17 @@
 Use repository evidence, not keywords alone. Select one execution mode and the
 smallest set of allowed skills that improves safety or evidence.
 
-| Signal                                              | Execution mode                 | Supporting skills                                                             |
-| --------------------------------------------------- | ------------------------------ | ----------------------------------------------------------------------------- |
-| Small local change, clear design, low risk          | Direct                         | focused criteria, targeted tests, self-review                                 |
-| Mature app, ordinary feature or bug fix             | Direct or staged               | `review-orchestrator` (impact review), relevant test-design skill             |
-| Greenfield app, MVP, or broad product request       | Staged                         | `prd-maker`, `review-orchestrator` (architecture / requirements review)       |
-| Multiple dependent work units                       | Staged                         | `review-orchestrator` (architecture / impact review), test-design skill       |
-| Independent work units with clear boundaries        | Parallel                       | `review-orchestrator` (architecture / test review)                            |
-| Competing viable designs with material risk         | Comparative                    | `review-orchestrator`, `blackbox-risk-based-test`, `whitebox-risk-based-test` |
-| External artifact needs a stable black-box oracle   | Direct, staged, or comparative | internal `implementation-acceptance-harness` plus matching test-design skill  |
-| Security, privacy, migration, or compatibility risk | Direct, staged, or comparative | `review-orchestrator` (matching risk review) plus test-design skill           |
+| Signal                                                                   | Execution mode                 | Supporting skills                                                             |
+| ------------------------------------------------------------------------ | ------------------------------ | ----------------------------------------------------------------------------- |
+| Small local change, clear design, low risk                               | Direct                         | focused criteria, targeted tests, self-review                                 |
+| Mature app, ordinary feature or bug fix                                  | Direct or staged               | `review-orchestrator` (impact review), relevant test-design skill             |
+| Greenfield app, MVP, or broad product request                            | Staged                         | `prd-maker`, `review-orchestrator` (architecture / requirements review)       |
+| Requirements, tests, acceptance criteria, or BDD need semantic alignment | Direct or staged               | `qe-artifact-baseline`, then matching acceptance/test-design skill            |
+| Multiple dependent work units                                            | Staged                         | `review-orchestrator` (architecture / impact review), test-design skill       |
+| Independent work units with clear boundaries                             | Parallel                       | `review-orchestrator` (architecture / test review)                            |
+| Competing viable designs with material risk                              | Comparative                    | `review-orchestrator`, `blackbox-risk-based-test`, `whitebox-risk-based-test` |
+| External artifact needs a stable black-box oracle                        | Direct, staged, or comparative | internal `implementation-acceptance-harness` plus matching test-design skill  |
+| Security, privacy, migration, or compatibility risk                      | Direct, staged, or comparative | `review-orchestrator` (matching risk review) plus test-design skill           |
 
 ## Precedence rules
 
@@ -26,6 +27,10 @@ smallest set of allowed skills that improves safety or evidence.
    unclear requirement.
 6. Freeze a black-box oracle before implementation when the consumer-facing
    contract, destructive behavior, or candidate comparison makes it valuable.
+7. Run `qe-artifact-baseline` before freezing acceptance criteria when the
+   source and generated QE artefacts may not preserve the same intent. Its
+   similarity bands are triage signals; human decisions and unresolved gaps
+   must remain visible in the plan.
 
 ## Route decision questions
 
